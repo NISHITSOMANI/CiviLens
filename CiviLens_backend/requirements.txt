@@ -1,0 +1,6 @@
+Django>=4.2
+djongo
+pymongo
+python-dotenv
+PyJWT
+django-cors-headers

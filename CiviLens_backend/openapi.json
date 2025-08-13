@@ -1,0 +1,24 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "CiviLens API",
+    "version": "0.1"
+  },
+  "paths": {
+    "/api/auth/register/": {
+      "post": {
+        "summary": "Register"
+      }
+    },
+    "/api/auth/login/": {
+      "post": {
+        "summary": "Login"
+      }
+    },
+    "/api/schemes/": {
+      "get": {
+        "summary": "List schemes"
+      }
+    }
+  }
+}
