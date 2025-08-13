@@ -1,5 +1,5 @@
 """
-URL configuration for CiviLensBackend project.
+URL configuration for civizens project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.2/topics/http/urls/
@@ -17,6 +17,18 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from django.contrib import admin
+from django.urls import path, include
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/schemes/', include('schemes.urls')),
+    path('api/complaints/', include('complaints.urls')),
+    path('api/sentiment/', include('sentiment_analysis.urls')),
+    path('api/documents/', include('documents.urls')),
+    path('api/chatbot/', include('chatbot.urls')),
+    path('api/regions/', include('regions.urls')),
+    path('api/discussions/', include('discussions.urls')),
+    path('api/adminpanel/', include('adminpanel.urls')),
+    path('api/auth/', include('users.urls')),
 ]
