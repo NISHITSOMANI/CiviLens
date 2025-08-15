@@ -8,6 +8,21 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 5173,
+    // When strictPort is true, Vite will exit if port 5173 is already in use
+    // instead of automatically switching to another port
+    strictPort: false,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/admin": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   plugins: [
     react(),

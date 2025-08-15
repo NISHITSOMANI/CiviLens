@@ -18,6 +18,20 @@ Changes made via Lovable will be committed automatically to this repo.
 
 If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
+## Development Server Information
+
+The frontend development server uses Vite and runs on port 5173 by default. However, if that port is already in use, Vite will automatically switch to the next available port (typically 5174). This is normal behavior and not an error.
+
+When starting the development server with `npm run dev`, always check the terminal output for the correct URL. It will display something like:
+
+```
+Local: http://localhost:5174
+```
+
+This indicates which port the server is actually running on. Simply open that URL in your browser to view the application.
+
+To force the server to always use port 5173 (and exit if it's busy), you can modify the `vite.config.ts` file to set `strictPort: true`.
+
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
 Follow these steps:

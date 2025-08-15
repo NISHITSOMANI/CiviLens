@@ -1,56 +1,58 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import { ThemeProvider } from "./components/ThemeProvider";
-import Navbar from "./components/Navbar";
-import Home from "./pages/Home";
-import Schemes from "./pages/Schemes";
-import Sentiment from "./pages/Sentiment";
-import Complaints from "./pages/Complaints";
-import Chat from "./pages/Chat";
-import AdminDashboard from "./pages/AdminDashboard";
-import Upload from "./pages/Upload";
-import Regions from "./pages/Regions";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import NotFound from "./pages/NotFound";
+import React from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import Navbar from './components/Navbar'
+import Footer from './components/Footer'
+import Home from './pages/Home'
+import Signup from './pages/Signup'
+import Login from './pages/Login'
+import Profile from './pages/Profile'
+import Complaints from './pages/Complaints'
+import NewComplaint from './pages/NewComplaint'
+import Schemes from './pages/Schemes'
+import SchemeDetail from './pages/SchemeDetail'
+import Discussions from './pages/Discussions'
+import Chat from './pages/Chat'
+import Documents from './pages/Documents'
+import Regions from './pages/Regions'
+import Sentiment from './pages/Sentiment'
+import AdminPanel from './pages/AdminPanel'
+import { AuthProvider } from './contexts/AuthContext'
+import { ToastProvider } from './contexts/ToastContext'
+import { LanguageProvider } from './contexts/LanguageContext'
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="dark" storageKey="civlens-ui-theme">
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <div className="min-h-screen bg-background">
+function App() {
+  return (
+    <AuthProvider>
+      <LanguageProvider>
+        <ToastProvider>
+          <Router>
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
               <Navbar />
-              <main className="pt-16">
+              <main className="flex-grow container mx-auto px-4 py-8">
                 <Routes>
                   <Route path="/" element={<Home />} />
-                  <Route path="/schemes" element={<Schemes />} />
-                  <Route path="/sentiment" element={<Sentiment />} />
-                  <Route path="/complaints" element={<Complaints />} />
-                  <Route path="/chat" element={<Chat />} />
-                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                  <Route path="/upload" element={<Upload />} />
-                  <Route path="/regions" element={<Regions />} />
-                  <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
-                  <Route path="*" element={<NotFound />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/complaints" element={<Complaints />} />
+                  <Route path="/complaints/new" element={<NewComplaint />} />
+                  <Route path="/schemes" element={<Schemes />} />
+                  <Route path="/schemes/:id" element={<SchemeDetail />} />
+                  <Route path="/discussions" element={<Discussions />} />
+                  <Route path="/chat" element={<Chat />} />
+                  <Route path="/documents" element={<Documents />} />
+                  <Route path="/regions" element={<Regions />} />
+                  <Route path="/sentiment" element={<Sentiment />} />
+                  <Route path="/admin" element={<AdminPanel />} />
                 </Routes>
               </main>
+              <Footer />
             </div>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+          </Router>
+        </ToastProvider>
+      </LanguageProvider>
+    </AuthProvider>
+  )
+}
 
-export default App;
+export default App

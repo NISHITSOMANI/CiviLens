@@ -1,254 +1,254 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Eye, 
-  BarChart3, 
-  MessageSquare, 
-  FileText, 
-  Bot, 
-  Upload, 
-  MapPin,
-  Mic,
-  Search,
-  TrendingUp,
-  Users,
-  Shield,
-  Zap,
-  ArrowRight,
-  Play
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const Home = () => {
-  const [isListening, setIsListening] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const { t } = useLanguage()
+  const { user } = useAuth()
+  const [isListening, setIsListening] = useState(false)
+  const [transcript, setTranscript] = useState('')
+  
+  // Mock heatmap data
+  const [heatmapData] = useState([
+    { region: 'Delhi', sentiment: 75, complaints: 120 },
+    { region: 'Mumbai', sentiment: 68, complaints: 95 },
+    { region: 'Bangalore', sentiment: 82, complaints: 78 },
+    { region: 'Chennai', sentiment: 65, complaints: 85 },
+    { region: 'Kolkata', sentiment: 58, complaints: 110 },
+    { region: 'Hyderabad', sentiment: 72, complaints: 65 },
+  ])
 
-  const features = [
-    {
-      icon: FileText,
-      title: 'Scheme Explorer',
-      description: 'Discover and analyze government schemes with AI-powered summaries',
-      path: '/schemes',
-      color: 'bg-primary'
-    },
-    {
-      icon: BarChart3,
-      title: 'Public Sentiment',
-      description: 'Real-time sentiment analysis from social media and public feedback',
-      path: '/sentiment',
-      color: 'bg-secondary'
-    },
-    {
-      icon: MessageSquare,
-      title: 'Submit Complaints',
-      description: 'Report issues and track government response in your region',
-      path: '/complaints',
-      color: 'bg-accent'
-    },
-    {
-      icon: Bot,
-      title: 'AI Assistant',
-      description: 'Get personalized scheme recommendations through smart chat',
-      path: '/chat',
-      color: 'bg-success'
-    },
-    {
-      icon: Upload,
-      title: 'Policy Analyzer',
-      description: 'Upload and analyze policy documents with OCR and NLP',
-      path: '/upload',
-      color: 'bg-warning'
-    },
-    {
-      icon: MapPin,
-      title: 'Regional Insights',
-      description: 'Explore scheme performance and sentiment by geographic region',
-      path: '/regions',
-      color: 'bg-destructive'
-    }
-  ];
-
-  const stats = [
-    { label: 'Schemes Analyzed', value: '2,547', icon: FileText },
-    { label: 'Public Feedback', value: '125K+', icon: Users },
-    { label: 'Success Rate', value: '87%', icon: TrendingUp },
-    { label: 'Active Regions', value: '28', icon: MapPin }
-  ];
-
-  const startVoiceSearch = () => {
+  // Voice recognition functionality
+  const startVoiceRecognition = () => {
     if ('webkitSpeechRecognition' in window) {
-      const recognition = new window.webkitSpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
+      setIsListening(true)
+      const recognition = new window.webkitSpeechRecognition()
+      recognition.continuous = false
+      recognition.interimResults = true
+      recognition.lang = 'en-US'
+      
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setSearchQuery(transcript);
-      };
-
-      recognition.start();
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('')
+        setTranscript(transcript)
+      }
+      
+      recognition.onend = () => {
+        setIsListening(false)
+        // In a real app, you would send the transcript to your backend
+        // to search for relevant schemes
+      }
+      
+      recognition.start()
+    } else {
+      alert('Speech recognition not supported in this browser. Please try Chrome.')
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen">
+    <div className="space-y-12">
       {/* Hero Section */}
-      <section className="relative py-20 px-4 overflow-hidden">
-        <div className="absolute inset-0 hero-gradient opacity-10"></div>
-        <div className="relative max-w-7xl mx-auto text-center">
-          <div className="animate-float">
-            <Badge variant="secondary" className="mb-4 px-4 py-2">
-              <Zap className="w-4 h-4 mr-2" />
-              AI-Powered Government Transparency
-            </Badge>
-          </div>
-          
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-gradient">
-            Your AI Watchdog for
-            <br />
-            Transparent Governance
-          </h1>
-          
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            CiviLens uses advanced AI to audit government schemes, analyze public sentiment, 
-            and provide real-time insights for better civic engagement.
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl p-8 md:p-12 shadow-xl">
+        <div className="max-w-4xl mx-auto text-center">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6">{t('home.hero.title')}</h1>
+          <p className="text-xl md:text-2xl mb-8 opacity-90">
+            {t('home.hero.subtitle')}
           </p>
-
-          {/* Voice Search */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search schemes, policies, or ask a question..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-12 py-3 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <button
-                onClick={startVoiceSearch}
-                className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded ${
-                  isListening ? 'text-destructive animate-pulse' : 'text-muted-foreground hover:text-primary'
-                }`}
+          
+          {/* Voice-Enabled Scheme Finder */}
+          <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 mb-8 max-w-2xl mx-auto">
+            <h3 className="text-xl font-bold mb-4">{t('home.hero.voiceFinder.title')}</h3>
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+              <button 
+                onClick={startVoiceRecognition}
+                disabled={isListening}
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full font-bold transition duration-300 ${isListening ? 'bg-red-500 hover:bg-red-600' : 'bg-white text-blue-600 hover:bg-blue-50'}`}
               >
-                <Mic className="w-5 h-5" />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+                {isListening ? t('home.hero.voiceFinder.listening') : t('home.hero.voiceFinder.speak')}
               </button>
+              <div className="flex-1 min-w-0 bg-white/30 rounded-lg px-4 py-2">
+                <p className="truncate text-white">{transcript || t('home.hero.voiceFinder.placeholder')}</p>
+              </div>
             </div>
-            <Button size="lg" className="animate-pulse-glow">
-              <Search className="w-5 h-5 mr-2" />
-              Search
-            </Button>
           </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/schemes">
-              <Button size="lg" variant="default">
-                Explore Schemes
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
-            <Link to="/chat">
-              <Button size="lg" variant="outline">
-                <Play className="w-5 h-5 mr-2" />
-                Try AI Assistant
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-16 px-4 bg-muted/50">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map((stat, index) => {
-              const Icon = stat.icon;
-              return (
-                <Card key={index} className="text-center card-hover">
-                  <CardContent className="p-6">
-                    <Icon className="w-8 h-8 mx-auto mb-3 text-primary" />
-                    <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                    <div className="text-sm text-muted-foreground">{stat.label}</div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            {user ? (
+              <Link 
+                to="/complaints" 
+                className="bg-white text-blue-600 hover:bg-blue-50 font-bold py-3 px-8 rounded-full text-lg transition duration-300 transform hover:scale-105"
+              >
+                {t('home.hero.buttons.fileComplaint')}
+              </Link>
+            ) : (
+              <>
+                <Link 
+                  to="/signup" 
+                  className="bg-white text-blue-600 hover:bg-blue-50 font-bold py-3 px-8 rounded-full text-lg transition duration-300 transform hover:scale-105"
+                >
+                  {t('home.hero.buttons.getStarted')}
+                </Link>
+                <Link 
+                  to="/login" 
+                  className="bg-transparent border-2 border-white hover:bg-white hover:text-blue-600 font-bold py-3 px-8 rounded-full text-lg transition duration-300"
+                >
+                  {t('home.hero.buttons.login')}
+                </Link>
+              </>
+            )}
           </div>
         </div>
-      </section>
+      </div>
 
       {/* Features Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Powerful Features for <span className="text-gradient">Civic Transparency</span>
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Discover how CiviLens leverages AI to make government schemes more accessible and accountable
-            </p>
+      <div className="max-w-6xl mx-auto">
+        <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">{t('home.features.title')}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
+            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-gray-800">{t('home.features.complaintManagement.title')}</h3>
+            <p className="text-gray-600">{t('home.features.complaintManagement.description')}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              return (
-                <Link key={index} to={feature.path}>
-                  <Card className="h-full card-hover group cursor-pointer">
-                    <CardHeader>
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${feature.color} mb-4 group-hover:scale-110 transition-transform`}>
-                        <Icon className="w-6 h-6 text-white" />
-                      </div>
-                      <CardTitle className="text-xl">{feature.title}</CardTitle>
-                      <CardDescription className="text-muted-foreground">
-                        {feature.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center text-primary font-medium group-hover:translate-x-2 transition-transform">
-                        Learn More
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
+            <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-gray-800">{t('home.features.governmentSchemes.title')}</h3>
+            <p className="text-gray-600">{t('home.features.governmentSchemes.description')}</p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
+            <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-gray-800">{t('home.features.communityDiscussions.title')}</h3>
+            <p className="text-gray-600">{t('home.features.communityDiscussions.description')}</p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
+            <div className="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-gray-800">{t('home.features.liveChatSupport.title')}</h3>
+            <p className="text-gray-600">{t('home.features.liveChatSupport.description')}</p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
+            <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-gray-800">{t('home.features.documentManagement.title')}</h3>
+            <p className="text-gray-600">{t('home.features.documentManagement.description')}</p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
+            <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-gray-800">{t('home.features.sentimentAnalysis.title')}</h3>
+            <p className="text-gray-600">{t('home.features.sentimentAnalysis.description')}</p>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-muted/30">
+      {/* Live Regional Heatmap Preview */}
+      <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-8">
+        <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">{t('home.heatmap.title')}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div>
+            <h3 className="text-xl font-bold mb-4 text-gray-700">{t('home.heatmap.sentimentByRegion')}</h3>
+            <div className="space-y-4">
+              {heatmapData.map((region, index) => (
+                <div key={index} className="flex items-center gap-4">
+                  <div className="w-32 text-gray-600">{region.region}</div>
+                  <div className="flex-1 bg-gray-200 rounded-full h-4">
+                    <div 
+                      className="h-4 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500" 
+                      style={{ width: `${region.sentiment}%` }}
+                    ></div>
+                  </div>
+                  <div className="w-12 text-right font-medium">{region.sentiment}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="text-xl font-bold mb-4 text-gray-700">{t('home.heatmap.complaintsByRegion')}</h3>
+            <div className="space-y-4">
+              {heatmapData.map((region, index) => (
+                <div key={index} className="flex items-center gap-4">
+                  <div className="w-32 text-gray-600">{region.region}</div>
+                  <div className="flex-1 bg-gray-200 rounded-full h-4">
+                    <div 
+                      className="h-4 rounded-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500" 
+                      style={{ width: `${Math.min(region.complaints, 150)}%` }}
+                    ></div>
+                  </div>
+                  <div className="w-12 text-right font-medium">{region.complaints}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-8 text-center">
+          <Link 
+            to="/regions" 
+            className="inline-block bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105"
+          >
+            {t('home.heatmap.viewFullDashboard')}
+          </Link>
+        </div>
+      </div>
+
+      {/* Stats Section */}
+      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl p-8 md:p-12 shadow-xl">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            Ready to Make Government <span className="text-gradient">More Transparent?</span>
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            Join thousands of citizens using CiviLens to track, analyze, and improve government schemes
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/signup">
-              <Button size="lg" className="animate-pulse-glow">
-                <Shield className="w-5 h-5 mr-2" />
-                Get Started Free
-              </Button>
-            </Link>
-            <Link to="/schemes">
-              <Button size="lg" variant="outline">
-                Explore Demo
-              </Button>
-            </Link>
+          <h2 className="text-3xl font-bold mb-8">{t('home.stats.title')}</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div>
+              <div className="text-4xl font-bold mb-2">10K+</div>
+              <div className="text-lg opacity-90">Users</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold mb-2">5K+</div>
+              <div className="text-lg opacity-90">{t('home.stats.complaintsResolved')}</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold mb-2">50+</div>
+              <div className="text-lg opacity-90">{t('home.stats.governmentSchemes')}</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold mb-2">95%</div>
+              <div className="text-lg opacity-90">{t('home.stats.satisfactionRate')}</div>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
     </div>
-  );
-};
+  )
+}
 
-export default Home;
+export default Home

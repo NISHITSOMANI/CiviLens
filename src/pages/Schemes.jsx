@@ -1,330 +1,289 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import FakeSchemeDetector from '@/components/FakeSchemeDetector';
-import { 
-  Search, 
-  Filter, 
-  FileText, 
-  TrendingUp, 
-  TrendingDown, 
-  Download,
-  Play,
-  CheckCircle,
-  AlertCircle,
-  MapPin,
-  Users,
-  IndianRupee,
-  Shield,
-  Zap
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const Schemes = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedState, setSelectedState] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const { t } = useLanguage()
+  const [schemes, setSchemes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all')
+  const [verificationText, setVerificationText] = useState('')
+  const [verificationResult, setVerificationResult] = useState(null)
 
-  const schemes = [
+  // Mock data for government schemes
+  const mockSchemes = [
     {
       id: 1,
       title: 'Pradhan Mantri Awas Yojana',
-      summary: 'Housing for All scheme providing affordable housing to economically weaker sections and low-income groups.',
+      description: 'Affordable housing for all by 2022. Provides financial assistance to eligible beneficiaries for construction of houses.',
       category: 'Housing',
-      state: 'All India',
-      targetAudience: 'EWS/LIG families',
-      budget: '₹12,000 Cr',
-      predictionScore: 85,
+      eligibility: 'EWS and LIG categories',
+      benefits: 'Up to ₹2.5 lakh interest subsidy',
+      deadline: '2025-12-31',
       status: 'active',
-      trend: 'up',
-      beneficiaries: '2.5M+',
-      successRate: 78
+      applicants: 12500
     },
     {
       id: 2,
-      title: 'Swachh Bharat Mission',
-      summary: 'Clean India campaign aimed at eliminating open defecation and improving solid waste management.',
-      category: 'Sanitation',
-      state: 'All India',
-      targetAudience: 'All citizens',
-      budget: '₹62,000 Cr',
-      predictionScore: 92,
+      title: 'Ayushman Bharat Yojana',
+      description: 'Health insurance scheme for poor and vulnerable households. Provides coverage up to ₹5 lakh per family per year.',
+      category: 'Healthcare',
+      eligibility: 'Families identified by SECC data',
+      benefits: '₹5 lakh coverage per family',
+      deadline: 'Ongoing',
       status: 'active',
-      trend: 'up',
-      beneficiaries: '600M+',
-      successRate: 88
+      applicants: 45000
     },
     {
       id: 3,
-      title: 'PM Kisan Samman Nidhi',
-      summary: 'Direct income support to farmers providing ₹6,000 per year to eligible farmer families.',
+      title: 'Pradhan Mantri Kisan Samman Nidhi',
+      description: 'Income support scheme for small and marginal farmers. Provides ₹6,000 per year in three equal installments.',
       category: 'Agriculture',
-      state: 'All India',
-      targetAudience: 'Small & marginal farmers',
-      budget: '₹75,000 Cr',
-      predictionScore: 79,
+      eligibility: 'Small and marginal farmers',
+      benefits: '₹6,000 per year',
+      deadline: 'Ongoing',
       status: 'active',
-      trend: 'down',
-      beneficiaries: '11.7M+',
-      successRate: 72
+      applicants: 85000
     },
     {
       id: 4,
-      title: 'Ayushman Bharat',
-      summary: 'National Health Protection Scheme providing health insurance coverage up to ₹5 lakh per family.',
-      category: 'Healthcare',
-      state: 'All India',
-      targetAudience: 'Poor & vulnerable families',
-      budget: '₹6,400 Cr',
-      predictionScore: 88,
+      title: 'Skill India Mission',
+      description: 'Training program to develop skilled workforce. Offers various courses in different sectors with placement assistance.',
+      category: 'Employment',
+      eligibility: 'All Indian citizens',
+      benefits: 'Skill development and placement',
+      deadline: 'Ongoing',
       status: 'active',
-      trend: 'up',
-      beneficiaries: '500M+',
-      successRate: 81
+      applicants: 32000
     },
     {
       id: 5,
-      title: 'Digital India Mission',
-      summary: 'Initiative to transform India into a digitally empowered society and knowledge economy.',
-      category: 'Technology',
-      state: 'All India',
-      targetAudience: 'All citizens',
-      budget: '₹1,13,000 Cr',
-      predictionScore: 76,
-      status: 'active',
-      trend: 'up',
-      beneficiaries: '1.3B+',
-      successRate: 69
-    },
-    {
-      id: 6,
       title: 'Beti Bachao Beti Padhao',
-      summary: 'Campaign to save and educate girl children, addressing declining child sex ratio.',
+      description: 'Campaign to generate awareness about declining child sex ratio and importance of girl child education.',
       category: 'Women & Child',
-      state: 'All India',
-      targetAudience: 'Girl children & families',
-      budget: '₹280 Cr',
-      predictionScore: 73,
+      eligibility: 'All districts in India',
+      benefits: 'Cash incentives for girl child education',
+      deadline: 'Ongoing',
       status: 'active',
-      trend: 'down',
-      beneficiaries: '25M+',
-      successRate: 65
+      applicants: 18000
     }
-  ];
+  ]
 
-  const categories = ['All', 'Housing', 'Sanitation', 'Agriculture', 'Healthcare', 'Technology', 'Women & Child', 'Education', 'Employment'];
-  const states = ['All', 'All India', 'Maharashtra', 'Karnataka', 'Tamil Nadu', 'Gujarat', 'Uttar Pradesh', 'West Bengal'];
+  useEffect(() => {
+    // Simulate API call
+    setTimeout(() => {
+      setSchemes(mockSchemes)
+      setLoading(false)
+    }, 1000)
+  }, [])
 
-  const filteredSchemes = schemes.filter(scheme => {
-    const matchesSearch = scheme.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         scheme.summary.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesState = selectedState === 'all' || selectedState === 'All' || scheme.state === selectedState;
-    const matchesCategory = selectedCategory === 'all' || selectedCategory === 'All' || scheme.category === selectedCategory;
-    
-    return matchesSearch && matchesState && matchesCategory;
-  });
+  const filteredSchemes = filter === 'all' 
+    ? schemes 
+    : schemes.filter(scheme => scheme.category.toLowerCase() === filter.toLowerCase())
 
-  const getScoreColor = (score) => {
-    if (score >= 85) return 'text-success';
-    if (score >= 70) return 'text-warning';
-    return 'text-destructive';
-  };
+  const handleExportInfographic = (schemeId) => {
+    // In a real app, this would generate and download an infographic
+    alert(`Infographic export for scheme ${schemeId} would be generated here.`)
+    console.log(`Exporting infographic for scheme ${schemeId}`)
+  }
 
-  const getScoreBadgeVariant = (score) => {
-    if (score >= 85) return 'default';
-    if (score >= 70) return 'secondary';
-    return 'destructive';
-  };
+  const handleVerifyScheme = () => {
+    if (!verificationText.trim()) {
+      setVerificationResult({ isFake: null, message: 'Please enter a message to verify.' })
+      return
+    }
+
+    // Simple fake detection logic (in a real app, this would be more sophisticated)
+    const fakeKeywords = ['free money', 'click here', 'urgent', 'limited time', 'act now']
+    const isFake = fakeKeywords.some(keyword => 
+      verificationText.toLowerCase().includes(keyword)
+    )
+
+    if (isFake) {
+      setVerificationResult({ 
+        isFake: true, 
+        message: 'Warning: This message appears to be a fake scheme. Please verify with official sources before taking any action.' 
+      })
+    } else {
+      setVerificationResult({ 
+        isFake: false, 
+        message: 'This message appears to be legitimate. However, always verify with official government sources before taking any action.' 
+      })
+    }
+  }
+
+  const categories = [...new Set(schemes.map(scheme => scheme.category))]
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-4">
-                Government <span className="text-gradient">Scheme Explorer</span>
-              </h1>
-              <p className="text-lg text-muted-foreground">
-                Discover and analyze government schemes with AI-powered insights and fraud detection
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-bold text-gray-800">{t('schemes_title')}</h2>
+        <p className="text-gray-600 mt-2">{t('schemes_subtitle')}</p>
+      </div>
+
+      {/* Fake Scheme Detector */}
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">{t('schemes_fake_detector')}</h3>
+        <p className="text-gray-600 mb-4">{t('schemes_fake_detector_placeholder')}</p>
+        
+        <div className="space-y-4">
+          <textarea
+            value={verificationText}
+            onChange={(e) => setVerificationText(e.target.value)}
+            placeholder={t('schemes_fake_detector_placeholder')}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            rows="4"
+          />
+          
+          <button
+            onClick={handleVerifyScheme}
+            className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300 hover:from-blue-600 hover:to-indigo-700"
+          >
+            {t('schemes_fake_detector_check')}
+          </button>
+          
+          {verificationResult && (
+            <div className={`p-4 rounded-lg ${verificationResult.isFake === true ? 'bg-red-50 border border-red-200' : verificationResult.isFake === false ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
+              <p className={`font-medium ${verificationResult.isFake === true ? 'text-red-800' : verificationResult.isFake === false ? 'text-green-800' : 'text-yellow-800'}`}>
+                {verificationResult.message}
               </p>
             </div>
-            <Badge variant="secondary" className="animate-pulse-glow">
-              <Shield className="w-4 h-4 mr-2" />
-              AI-Powered Fraud Detection
-            </Badge>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Filters Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-xl shadow-md p-6 sticky top-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Filter by Category</h3>
+            
+            <div className="space-y-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`block w-full text-left px-4 py-2 rounded-lg ${filter === 'all' ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                {t('schemes_category_all')}
+              </button>
+              
+              {categories.map((category, index) => (
+                <button
+                  key={index}
+                  onClick={() => setFilter(category)}
+                  className={`block w-full text-left px-4 py-2 rounded-lg ${filter === category ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="explore" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="explore" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Explore Schemes
-            </TabsTrigger>
-            <TabsTrigger value="detector" className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              Fraud Detector
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="explore" className="space-y-6">
-            {/* Search and Filters */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row gap-4">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                      <Input
-                        placeholder="Search schemes by name, description, or keywords..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10"
-                      />
+        {/* Schemes List */}
+        <div className="lg:col-span-3">
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                {filter === 'all' ? 'All Schemes' : `${filter} Schemes`}
+                <span className="text-gray-500 font-normal ml-2">({filteredSchemes.length})</span>
+              </h3>
+              
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder={t('schemes_search_placeholder')}
+                  className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <svg className="w-5 h-5 text-gray-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+            
+            <div className="space-y-6">
+              {filteredSchemes.length > 0 ? (
+                filteredSchemes.map((scheme) => (
+                  <div key={scheme.id} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition duration-300">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="text-lg font-bold text-gray-800">{scheme.title}</h4>
+                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                            {scheme.status}
+                          </span>
+                        </div>
+                        <p className="text-gray-600 mb-3">{scheme.description}</p>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+                          <div>
+                            <span className="text-gray-500 block">Category</span>
+                            <span className="font-medium text-gray-800">{scheme.category}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block">Eligibility</span>
+                            <span className="font-medium text-gray-800">{scheme.eligibility}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block">Benefits</span>
+                            <span className="font-medium text-gray-800">{scheme.benefits}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block">Deadline</span>
+                            <span className="font-medium text-gray-800">{scheme.deadline}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center text-sm text-gray-500">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                          <span>{scheme.applicants.toLocaleString()} applicants</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col gap-2 md:items-end">
+                        <button
+                          onClick={() => handleExportInfographic(scheme.id)}
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          {t('schemes_infographic_export')}
+                        </button>
+                        <Link
+                          to={`/schemes/${scheme.id}`}
+                          className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium py-2 px-4 rounded-lg transition duration-300 hover:from-blue-600 hover:to-indigo-700 text-center"
+                        >
+                          {t('view_details')}
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Select value={selectedState} onValueChange={setSelectedState}>
-                      <SelectTrigger className="w-full sm:w-40">
-                        <SelectValue placeholder="Select State" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {states.map(state => (
-                          <SelectItem key={state.toLowerCase()} value={state.toLowerCase()}>
-                            {state}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-full sm:w-40">
-                        <SelectValue placeholder="Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category.toLowerCase()} value={category.toLowerCase()}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Button variant="outline">
-                      <Filter className="w-4 h-4 mr-2" />
-                      Filters
-                    </Button>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h4 className="text-lg font-medium text-gray-800 mb-2">No schemes found</h4>
+                  <p className="text-gray-600">Try adjusting your filters to see more results</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Results */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredSchemes.map((scheme) => (
-            <Card key={scheme.id} className="card-hover group cursor-pointer">
-              <CardHeader>
-                <div className="flex items-start justify-between mb-2">
-                  <Badge variant="outline" className="mb-2">
-                    {scheme.category}
-                  </Badge>
-                  <div className="flex items-center space-x-2">
-                    {scheme.trend === 'up' ? (
-                      <TrendingUp className="w-4 h-4 text-success" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4 text-destructive" />
-                    )}
-                    <Badge variant={getScoreBadgeVariant(scheme.predictionScore)}>
-                      {scheme.predictionScore}% Success
-                    </Badge>
-                  </div>
-                </div>
-                
-                <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                  {scheme.title}
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  {scheme.summary}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{scheme.state}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{scheme.beneficiaries}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <IndianRupee className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{scheme.budget}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <CheckCircle className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{scheme.successRate}% Rate</span>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-muted-foreground">Target: {scheme.targetAudience}</span>
-                    <span className={`font-medium ${getScoreColor(scheme.predictionScore)}`}>
-                      {scheme.predictionScore}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${scheme.predictionScore}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button size="sm" variant="default" className="flex-1">
-                    <FileText className="w-4 h-4 mr-2" />
-                    View Details
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <Play className="w-4 h-4" />
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <Download className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+              )}
+            </div>
+          </div>
         </div>
-
-            {filteredSchemes.length === 0 && (
-              <div className="text-center py-12">
-                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No schemes found</h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your search criteria or filters
-                </p>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="detector" className="space-y-6">
-            <FakeSchemeDetector />
-          </TabsContent>
-        </Tabs>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Schemes;
+export default Schemes

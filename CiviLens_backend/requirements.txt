@@ -1,6 +1,7 @@
 Django>=4.2
 djongo
 pymongo
+certifi
 python-dotenv
 PyJWT
 django-cors-headers

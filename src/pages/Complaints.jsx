@@ -1,357 +1,220 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  MessageSquare, 
-  Send, 
-  MapPin, 
-  AlertTriangle, 
-  Clock, 
-  CheckCircle,
-  Filter,
-  Search
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const Complaints = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    region: '',
-    issue: '',
-    topic: '',
-    urgency: '3',
-    description: ''
-  });
-  const { toast } = useToast();
+  const { t } = useLanguage()
+  const [complaints, setComplaints] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all')
 
-  const complaints = [
+  // Mock data for complaints
+  const mockComplaints = [
     {
       id: 1,
-      region: 'Mumbai, Maharashtra',
-      topic: 'Housing',
-      urgency: 5,
-      description: 'Delay in housing allotment under PMAY scheme despite completing all documentation 6 months ago.',
+      title: 'Street Light Not Working',
+      description: 'The street light near the main entrance of our colony has been faulty for the past week.',
       status: 'pending',
-      timestamp: '2 hours ago',
-      scheme: 'Pradhan Mantri Awas Yojana'
+      category: 'Infrastructure',
+      location: 'Sector 12, Dwarka',
+      date: '2025-08-10',
+      upvotes: 12
     },
     {
       id: 2,
-      region: 'Bangalore, Karnataka',
-      topic: 'Healthcare',
-      urgency: 4,
-      description: 'Ayushman Bharat card not being accepted at empaneled hospitals, facing difficulties in treatment.',
-      status: 'in-progress',
-      timestamp: '5 hours ago',
-      scheme: 'Ayushman Bharat'
+      title: 'Water Supply Issue',
+      description: 'Irregular water supply in our area for the past 3 days. Please look into the matter.',
+      status: 'resolved',
+      category: 'Utilities',
+      location: 'Sector 23, Rohini',
+      date: '2025-08-08',
+      upvotes: 8
     },
     {
       id: 3,
-      region: 'Chennai, Tamil Nadu',
-      topic: 'Agriculture',
-      urgency: 3,
-      description: 'PM Kisan installment delayed for 3 months, affecting farmer livelihood and crop planning.',
-      status: 'resolved',
-      timestamp: '1 day ago',
-      scheme: 'PM Kisan Samman Nidhi'
+      title: 'Garbage Collection Delay',
+      description: 'Garbage has not been collected for the past 5 days. It is causing a bad smell in the area.',
+      status: 'in_progress',
+      category: 'Sanitation',
+      location: 'Sector 7, Vaishali',
+      date: '2025-08-12',
+      upvotes: 25
     },
     {
       id: 4,
-      region: 'Ahmedabad, Gujarat',
-      topic: 'Sanitation',
-      urgency: 2,
-      description: 'Construction of toilets under Swachh Bharat Mission incomplete, poor quality work observed.',
+      title: 'Road Repair Needed',
+      description: 'Potholes on the main road near the market are causing damage to vehicles.',
       status: 'pending',
-      timestamp: '2 days ago',
-      scheme: 'Swachh Bharat Mission'
-    },
-    {
-      id: 5,
-      region: 'Lucknow, Uttar Pradesh',
-      topic: 'Digital Services',
-      urgency: 3,
-      description: 'DigiLocker services frequently down, unable to access important documents for scheme applications.',
-      status: 'in-progress',
-      timestamp: '3 days ago',
-      scheme: 'Digital India'
+      category: 'Infrastructure',
+      location: 'Sector 15, Pitampura',
+      date: '2025-08-14',
+      upvotes: 17
     }
-  ];
+  ]
 
-  const topics = [
-    'Housing', 'Healthcare', 'Agriculture', 'Sanitation', 'Education', 
-    'Employment', 'Digital Services', 'Transportation', 'Women & Child Welfare', 'Other'
-  ];
+  useEffect(() => {
+    // Simulate API call
+    setTimeout(() => {
+      setComplaints(mockComplaints)
+      setLoading(false)
+    }, 1000)
+  }, [])
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const filteredComplaints = filter === 'all' 
+    ? complaints 
+    : complaints.filter(complaint => complaint.category === filter)
 
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "Complaint submitted successfully!",
-        description: "Your complaint has been registered and will be reviewed by relevant authorities.",
-      });
-      
-      // Reset form
-      setFormData({
-        region: '',
-        issue: '',
-        topic: '',
-        urgency: '3',
-        description: ''
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Submission failed",
-        description: "Please try again later.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const getUrgencyColor = (urgency) => {
-    if (urgency >= 4) return 'bg-destructive';
-    if (urgency === 3) return 'bg-warning';
-    return 'bg-success';
-  };
+  const categories = [...new Set(complaints.map(complaint => complaint.category))]
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'resolved': return 'bg-success';
-      case 'in-progress': return 'bg-primary';
-      default: return 'bg-muted';
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'in_progress': return 'bg-blue-100 text-blue-800'
+      case 'resolved': return 'bg-green-100 text-green-800'
+      default: return 'bg-gray-100 text-gray-800'
     }
-  };
+  }
 
-  const getStatusIcon = (status) => {
+  const getStatusText = (status) => {
     switch (status) {
-      case 'resolved': return CheckCircle;
-      case 'in-progress': return Clock;
-      default: return AlertTriangle;
+      case 'pending': return t('complaints_status_pending')
+      case 'in_progress': return t('complaints_status_in_progress')
+      case 'resolved': return t('complaints_status_resolved')
+      default: return status
     }
-  };
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">
-            Submit <span className="text-gradient">Public Complaints</span>
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            Report issues with government schemes and track community feedback
-          </p>
+    <div className="space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-800">{t('complaints_title')}</h2>
+          <p className="text-gray-600 mt-2">{t('complaints_subtitle')}</p>
+        </div>
+        <Link 
+          to="/complaints/new" 
+          className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 hover:from-blue-600 hover:to-indigo-700 text-center"
+        >
+          {t('complaints_file_new')}
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Filters Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-xl shadow-md p-6 sticky top-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">{t('complaints_filter_category')}</h3>
+            
+            <div className="space-y-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`block w-full text-left px-4 py-2 rounded-lg ${filter === 'all' ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                {t('complaints_category_all')}
+              </button>
+              
+              {categories.map((category, index) => (
+                <button
+                  key={index}
+                  onClick={() => setFilter(category)}
+                  className={`block w-full text-left px-4 py-2 rounded-lg ${filter === category ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Complaint Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <MessageSquare className="w-5 h-5" />
-                <span>Submit New Complaint</span>
-              </CardTitle>
-              <CardDescription>
-                Help us improve government schemes by reporting issues
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="region">Region/Location</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                    <Input
-                      id="region"
-                      placeholder="Enter your city and state"
-                      value={formData.region}
-                      onChange={(e) => setFormData(prev => ({ ...prev, region: e.target.value }))}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="topic">Issue Category</Label>
-                  <Select value={formData.topic} onValueChange={(value) => setFormData(prev => ({ ...prev, topic: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select issue category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {topics.map(topic => (
-                        <SelectItem key={topic} value={topic}>
-                          {topic}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="urgency">Urgency Level</Label>
-                  <Select value={formData.urgency} onValueChange={(value) => setFormData(prev => ({ ...prev, urgency: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select urgency level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 - Low (General inquiry)</SelectItem>
-                      <SelectItem value="2">2 - Minor (Delayed service)</SelectItem>
-                      <SelectItem value="3">3 - Medium (Service issue)</SelectItem>
-                      <SelectItem value="4">4 - High (Urgent attention needed)</SelectItem>
-                      <SelectItem value="5">5 - Critical (Emergency)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="issue">Issue Title</Label>
-                  <Input
-                    id="issue"
-                    placeholder="Brief title describing your issue"
-                    value={formData.issue}
-                    onChange={(e) => setFormData(prev => ({ ...prev, issue: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Detailed Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Provide detailed information about your complaint, including scheme name, timeline, and specific issues faced..."
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    rows={4}
-                    required
-                  />
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Clock className="w-4 h-4 mr-2 animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4 mr-2" />
-                      Submit Complaint
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Recent Complaints */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Community Complaints</CardTitle>
-              <CardDescription>
-                Anonymous complaints from the community (personal details removed)
-              </CardDescription>
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filter
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Search className="w-4 h-4 mr-2" />
-                  Search
-                </Button>
+        {/* Complaints List */}
+        <div className="lg:col-span-3">
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                {filter === 'all' ? t('complaints_all') : `${filter} ${t('complaints')}`}
+                <span className="text-gray-500 font-normal ml-2">({filteredComplaints.length})</span>
+              </h3>
+              
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder={t('complaints_search_placeholder')}
+                  className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <svg className="w-5 h-5 text-gray-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {complaints.map((complaint) => {
-                  const StatusIcon = getStatusIcon(complaint.status);
-                  return (
-                    <div key={complaint.id} className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline" className="text-xs">
-                            {complaint.topic}
-                          </Badge>
-                          <div className={`w-2 h-2 rounded-full ${getUrgencyColor(complaint.urgency)}`}></div>
-                          <span className="text-xs text-muted-foreground">Urgency: {complaint.urgency}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <StatusIcon className={`w-4 h-4 ${getStatusColor(complaint.status).replace('bg-', 'text-')}`} />
-                          <span className="text-xs text-muted-foreground capitalize">
-                            {complaint.status.replace('-', ' ')}
+            </div>
+            
+            <div className="space-y-6">
+              {filteredComplaints.length > 0 ? (
+                filteredComplaints.map((complaint) => (
+                  <div key={complaint.id} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition duration-300">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="text-lg font-bold text-gray-800">{complaint.title}</h4>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(complaint.status)}`}>
+                            {getStatusText(complaint.status)}
                           </span>
                         </div>
+                        <p className="text-gray-600 mb-3">{complaint.description}</p>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+                          <div>
+                            <span className="text-gray-500 block">{t('complaints_category')}</span>
+                            <span className="font-medium text-gray-800">{complaint.category}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block">{t('complaints_location')}</span>
+                            <span className="font-medium text-gray-800">{complaint.location}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block">{t('complaints_date')}</span>
+                            <span className="font-medium text-gray-800">{complaint.date}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block">{t('complaints_upvotes')}</span>
+                            <span className="font-medium text-gray-800">{complaint.upvotes}</span>
+                          </div>
+                        </div>
                       </div>
                       
-                      <p className="text-sm mb-2 line-clamp-2">
-                        {complaint.description}
-                      </p>
-                      
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="w-3 h-3" />
-                          <span>{complaint.region}</span>
-                        </div>
-                        <span>{complaint.timestamp}</span>
+                      <div className="flex flex-col gap-2 md:items-end">
+                        <Link
+                          to={`/complaints/${complaint.id}`}
+                          className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium py-2 px-4 rounded-lg transition duration-300 hover:from-blue-600 hover:to-indigo-700 text-center"
+                        >
+                          {t('view_details')}
+                        </Link>
                       </div>
-                      
-                      {complaint.scheme && (
-                        <div className="mt-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {complaint.scheme}
-                          </Badge>
-                        </div>
-                      )}
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Statistics */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="text-center">
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-primary">1,247</div>
-              <div className="text-sm text-muted-foreground">Total Complaints</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-success">823</div>
-              <div className="text-sm text-muted-foreground">Resolved Issues</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-warning">298</div>
-              <div className="text-sm text-muted-foreground">In Progress</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-muted-foreground">126</div>
-              <div className="text-sm text-muted-foreground">Pending Review</div>
-            </CardContent>
-          </Card>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h4 className="text-lg font-medium text-gray-800 mb-2">{t('complaints_not_found')}</h4>
+                  <p className="text-gray-600">{t('complaints_not_found_message')}</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Complaints;
+export default Complaints

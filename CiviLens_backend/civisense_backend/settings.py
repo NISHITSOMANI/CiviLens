@@ -13,6 +13,12 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'change-me-in-production')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Prevent Django from creating default permissions (avoids Djongo ORDER BY issue)
+def noop_create_permissions(*args, **kwargs):
+    pass
+
+import django.contrib.auth.management
+django.contrib.auth.management.create_permissions = noop_create_permissions
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -33,9 +39,6 @@ INSTALLED_APPS = [
     'regions',
     'discussions',
     'adminpanel',
-]
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Vite default
 ]
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -70,18 +73,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'civisense_backend.wsgi.application'
 
-# Djongo / MongoDB settings (placeholder)
-DATABASES = {
-    'default': {
-        'ENGINE': 'djongo',
-        'NAME': os.getenv('MONGO_DB_NAME', 'CiviLensDB'),
-        'CLIENT': {
-            'host': os.getenv('MONGO_URI', 'mongodb+srv://<username>:<password>@<cluster-url>/'),
-        }
-    }
-}
+# MongoDB settings - using pymongo directly
+# Note: We're not using Django's DATABASES setting since we're connecting via pymongo directly
+# MongoDB connection is handled in db_connection.py
+# Patch: Prevent Django from creating default permissions (avoids Djongo ORDER BY issue)
+def noop_create_permissions(*args, **kwargs):
+    pass
+import django.contrib.auth.management
+django.contrib.auth.management.create_permissions = noop_create_permissions
 
-AUTH_USER_MODEL = 'users.CustomUser'
+# AUTH_USER_MODEL is not used since we're not using Django models
+# AUTH_USER_MODEL = 'users.CustomUser'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -16,6 +17,7 @@ import {
   Globe,
   Brain
 } from 'lucide-react';
+import { uploadDocument } from '@/services/api/documents';
 
 const PolicyUpload = () => {
   const [uploadState, setUploadState] = useState('idle'); // idle, uploading, processing, complete
@@ -23,6 +25,7 @@ const PolicyUpload = () => {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -62,64 +65,43 @@ const PolicyUpload = () => {
     setUploadState('uploading');
     setUploadProgress(0);
 
-    // Simulate upload progress
-    const uploadInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(uploadInterval);
-          setUploadState('processing');
-          processFile(file);
-          return 100;
-        }
-        return prev + 10;
+    try {
+      // Upload file using API
+      const response = await uploadDocument(file);
+      
+      if (response.success) {
+        setUploadState('processing');
+        
+        // Simulate processing delay
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Use the actual analysis result from the API
+        setAnalysisResult(response.data);
+        setUploadState('complete');
+        
+        toast({
+          title: "Analysis complete!",
+          description: "The document has been successfully processed and analyzed.",
+        });
+        
+        // Invalidate and refetch documents
+        queryClient.invalidateQueries(['documents']);
+      } else {
+        setUploadState('idle');
+        toast({
+          variant: "destructive",
+          title: "Upload failed",
+          description: response.error?.message || "Failed to upload document. Please try again.",
+        });
+      }
+    } catch (error) {
+      setUploadState('idle');
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: "Failed to upload document. Please try again.",
       });
-    }, 200);
-  };
-
-  const processFile = async (file) => {
-    // Simulate AI processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Mock analysis result
-    const mockResult = {
-      title: "Pradhan Mantri Digital Health Mission",
-      objective: "To develop digital health infrastructure and promote digital health services across India",
-      targetAudience: "All citizens of India, with focus on rural and underserved populations",
-      region: "All India",
-      budget: "₹3,000 Crores",
-      timeline: "2021-2026",
-      departments: ["Ministry of Health and Family Welfare", "National Health Authority"],
-      keyFeatures: [
-        "Digital Health IDs for all citizens",
-        "Health Records digitization",
-        "Telemedicine services",
-        "AI-powered diagnostics",
-        "Health data analytics"
-      ],
-      eligibility: "All Indian citizens can register for digital health services",
-      predictionScore: 82,
-      riskFactors: [
-        "Digital literacy challenges in rural areas",
-        "Privacy and security concerns",
-        "Infrastructure requirements"
-      ],
-      successFactors: [
-        "Government backing and funding",
-        "Private sector partnerships",
-        "Growing smartphone penetration"
-      ],
-      languages: ['English', 'Hindi', 'Telugu'],
-      extractedText: "The Pradhan Mantri Digital Health Mission aims to create a comprehensive digital health ecosystem...",
-      infographicGenerated: true
-    };
-
-    setAnalysisResult(mockResult);
-    setUploadState('complete');
-    
-    toast({
-      title: "Analysis complete!",
-      description: "The document has been successfully processed and analyzed.",
-    });
+    }
   };
 
   const handleFileInputChange = (e) => {

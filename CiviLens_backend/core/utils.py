@@ -1,17 +1,16 @@
-from django.forms.models import model_to_dict
-
 def to_dict(instance, fields=None):
-    try:
-        data = model_to_dict(instance)
-    except Exception:
-        # fallback for Djongo or complex fields
-        data = {}
-        for f in instance._meta.fields:
-            name = f.name
-            try:
-                data[name] = getattr(instance, name)
-            except Exception:
-                data[name] = None
+    # For MongoDB documents, simply return the document
+    # Remove the _id field and replace with id
+    if '_id' in instance:
+        instance['id'] = str(instance['_id'])
+        del instance['_id']
+    
+    # If specific fields are requested, filter the document
     if fields:
-        return {k: data.get(k) for k in fields}
-    return data
+        filtered_data = {}
+        for field in fields:
+            if field in instance:
+                filtered_data[field] = instance[field]
+        return filtered_data
+    
+    return instance
