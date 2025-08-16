@@ -264,6 +264,24 @@ class SchemeVerifyView(View):
                 reasons.append({'type': 'metadata', 'weight': 10, 'message': f"Missing fields: {', '.join(missing)}", 'value': ''})
                 score += 10
 
+            # 5) Low-information content penalties
+            low_info_text = text
+            word_count = len([w for w in re.findall(r"\w+", low_info_text)])
+            low_info_triggered = False
+            if word_count < 6 or (' ' not in low_info_text):
+                reasons.append({'type': 'content', 'weight': 20, 'message': 'Very low information content', 'value': ''})
+                score += 20
+                low_info_triggered = True
+            if len(low_info_text) < 40:
+                reasons.append({'type': 'content', 'weight': 10, 'message': 'Text is very short', 'value': ''})
+                score += 10
+                low_info_triggered = True
+            scheme_keywords = ['apply','deadline','document','eligibility','benefit','scholarship','scheme','government','portal']
+            if not any(k in low_info_text for k in scheme_keywords):
+                reasons.append({'type': 'content', 'weight': 10, 'message': 'Missing typical scheme keywords', 'value': ''})
+                score += 10
+                low_info_triggered = True
+
             # Try ML prediction (prob of suspicious)
             model_prob = None
             top_terms = []
@@ -284,9 +302,13 @@ class SchemeVerifyView(View):
                 if top_terms:
                     reasons.append({'type': 'ml_terms', 'weight': 0, 'message': 'Top contributing terms', 'value': top_terms})
 
-            # Clamp score and label after blend
+            # Clamp and enforce low-info behavior
             score = max(0, min(100, score))
-            label = 'suspicious' if score >= 50 else 'legit'
+            if low_info_triggered:
+                score = max(score, 60)
+                label = 'suspicious'
+            else:
+                label = 'suspicious' if score >= 50 else 'legit'
 
             verification = {
                 'risk_score': score,
@@ -349,7 +371,25 @@ class SchemeVerifyMessageView(View):
                 reasons.append({'type': 'contact', 'weight': 10, 'message': 'Personal email domain mentioned', 'value': ''})
                 score += 10
 
-            # 4) Try ML prediction (if available)
+            # 4) Low-information content penalties
+            low_info_text = text
+            word_count = len([w for w in re.findall(r"\w+", low_info_text)])
+            low_info_triggered = False
+            if word_count < 6 or (' ' not in low_info_text):
+                reasons.append({'type': 'content', 'weight': 20, 'message': 'Very low information content', 'value': ''})
+                score += 20
+                low_info_triggered = True
+            if len(low_info_text) < 40:
+                reasons.append({'type': 'content', 'weight': 10, 'message': 'Text is very short', 'value': ''})
+                score += 10
+                low_info_triggered = True
+            scheme_keywords = ['apply','deadline','document','eligibility','benefit','scholarship','scheme','government','portal']
+            if not any(k in low_info_text for k in scheme_keywords):
+                reasons.append({'type': 'content', 'weight': 10, 'message': 'Missing typical scheme keywords', 'value': ''})
+                score += 10
+                low_info_triggered = True
+
+            # 5) Try ML prediction (if available)
             model_prob = None
             top_terms = []
             model_version = None
@@ -369,7 +409,11 @@ class SchemeVerifyMessageView(View):
 
             # Finalize
             score = max(0, min(100, score))
-            label = 'suspicious' if score >= 50 else 'legit'
+            if low_info_triggered:
+                score = max(score, 60)
+                label = 'suspicious'
+            else:
+                label = 'suspicious' if score >= 50 else 'legit'
 
             data = {
                 'risk_score': score,
