@@ -1,68 +1,20 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
+import * as discussionsApi from '../services/api/discussions'
 
 const Discussions = () => {
   const { t } = useLanguage()
-  const [discussions, setDiscussions] = useState([])
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
 
-  // Mock data for discussions
-  const mockDiscussions = [
-    {
-      id: 1,
-      title: 'Improving Public Transportation in Delhi',
-      content: 'Let\'s discuss ways to improve public transportation in Delhi. What are your suggestions for better bus services and metro connectivity?',
-      author: 'Amit Sharma',
-      category: 'Transportation',
-      date: '2025-08-14',
-      comments: 24,
-      likes: 42,
-      tags: ['transport', 'delhi', 'metro']
-    },
-    {
-      id: 2,
-      title: 'Waste Management Solutions for Residential Areas',
-      content: 'How can we improve waste management in our residential areas? Share your ideas on segregation, collection, and recycling.',
-      author: 'Priya Patel',
-      category: 'Environment',
-      date: '2025-08-12',
-      comments: 18,
-      likes: 35,
-      tags: ['waste', 'environment', 'recycling']
-    },
-    {
-      id: 3,
-      title: 'Digital Literacy Programs for Senior Citizens',
-      content: 'Many senior citizens struggle with digital technologies. What kind of programs can help them adapt to the digital world?',
-      author: 'Rajesh Kumar',
-      category: 'Education',
-      date: '2025-08-10',
-      comments: 31,
-      likes: 56,
-      tags: ['education', 'seniors', 'digital']
-    },
-    {
-      id: 4,
-      title: 'Affordable Healthcare Access',
-      content: 'Access to affordable healthcare is a major concern. How can we make quality healthcare more accessible to all sections of society?',
-      author: 'Dr. Sunita Verma',
-      category: 'Healthcare',
-      date: '2025-08-08',
-      comments: 42,
-      likes: 78,
-      tags: ['healthcare', 'affordable', 'access']
-    }
-  ]
+  const { data: discussionsData, isLoading, isError } = useQuery({
+    queryKey: ['discussions'],
+    queryFn: discussionsApi.listDiscussions,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setDiscussions(mockDiscussions)
-      setLoading(false)
-    }, 1000)
-  }, [])
+  const discussions = discussionsData || []
 
   const filteredDiscussions = filter === 'all' 
     ? discussions 
@@ -70,11 +22,26 @@ const Discussions = () => {
 
   const categories = [...new Set(discussions.map(discussion => discussion.category))]
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <span className="ml-4 text-gray-600">{t('discussions_loading')}</span>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="text-red-500 font-bold mb-2">Error Loading Data</div>
+        <p className="text-red-700 mb-4">Failed to load discussions data. Please try again later.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+        >
+          Retry
+        </button>
       </div>
     )
   }

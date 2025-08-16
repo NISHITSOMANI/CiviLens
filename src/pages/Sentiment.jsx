@@ -1,52 +1,23 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useQuery } from '@tanstack/react-query'
+import * as sentimentApi from '../services/api/sentiment'
+import { toast } from 'react-hot-toast'
 
 const Sentiment = () => {
   const { t } = useLanguage()
-  const [sentimentData, setSentimentData] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('week')
 
-  // Mock data for sentiment analysis
-  const mockSentimentData = {
-    overall: {
-      positive: 65,
-      neutral: 20,
-      negative: 15
-    },
-    trends: [
-      { date: '2025-08-08', positive: 60, neutral: 25, negative: 15 },
-      { date: '2025-08-09', positive: 62, neutral: 22, negative: 16 },
-      { date: '2025-08-10', positive: 58, neutral: 24, negative: 18 },
-      { date: '2025-08-11', positive: 64, neutral: 20, negative: 16 },
-      { date: '2025-08-12', positive: 67, neutral: 18, negative: 15 },
-      { date: '2025-08-13', positive: 63, neutral: 21, negative: 16 },
-      { date: '2025-08-14', positive: 65, neutral: 20, negative: 15 }
-    ],
-    categories: [
-      { name: 'Public Transport', positive: 72, neutral: 18, negative: 10 },
-      { name: 'Healthcare', positive: 58, neutral: 25, negative: 17 },
-      { name: 'Education', positive: 68, neutral: 20, negative: 12 },
-      { name: 'Infrastructure', positive: 55, neutral: 30, negative: 15 },
-      { name: 'Utilities', positive: 62, neutral: 22, negative: 16 }
-    ],
-    keywords: [
-      { word: 'improvement', count: 1240, sentiment: 'positive' },
-      { word: 'delay', count: 890, sentiment: 'negative' },
-      { word: 'satisfied', count: 760, sentiment: 'positive' },
-      { word: 'issue', count: 720, sentiment: 'negative' },
-      { word: 'efficient', count: 680, sentiment: 'positive' },
-      { word: 'corruption', count: 540, sentiment: 'negative' }
-    ]
-  }
-
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setSentimentData(mockSentimentData)
-      setLoading(false)
-    }, 1000)
-  }, [])
+  // Fetch sentiment data using React Query
+  const { data: sentimentData, isLoading, error, refetch } = useQuery({
+    queryKey: ['sentiment', 'overview'],
+    queryFn: sentimentApi.overview,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    onError: (error) => {
+      toast.error(t('sentiment.fetchError') || 'Failed to load sentiment data')
+      console.error('Error fetching sentiment data:', error)
+    }
+  })
 
   const getSentimentColor = (sentiment) => {
     switch (sentiment) {
@@ -64,10 +35,25 @@ const Sentiment = () => {
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="text-red-500 font-bold mb-2">{t('error_loading_data')}</div>
+        <p className="text-red-700 mb-4">{t('failed_to_load_sentiment_data')}</p>
+        <button 
+          onClick={() => refetch()} 
+          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+        >
+          {t('retry')}
+        </button>
       </div>
     )
   }

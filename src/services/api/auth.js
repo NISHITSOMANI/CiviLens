@@ -14,15 +14,43 @@ export async function register(userData) {
 }
 
 export async function login(credentials) {
+  console.log('Auth service - login called with:', { ...credentials, password: '***' });
   try {
-    const response = await apiClient.post('/auth/login/', credentials)
-    return response.data
+    // Ensure we're sending email instead of username
+    const { email, password } = credentials;
+    console.log('Sending login request to /auth/login/');
+    
+    const response = await apiClient.post('/auth/login/', { 
+      email, 
+      password 
+    });
+    
+    console.log('Login response received:', response);
+    return response.data;
   } catch (error) {
+    console.error('Login error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers
+    });
+    
     // Handle error and return consistent format
     if (error.response?.data) {
-      return error.response.data
+      return { 
+        success: false, 
+        error: typeof error.response.data === 'object' 
+          ? error.response.data 
+          : { message: error.response.data }
+      };
     }
-    return { success: false, error: { message: error.message || 'Login failed' } }
+    
+    return { 
+      success: false, 
+      error: { 
+        message: error.message || 'Login failed. Please check your email and password.' 
+      } 
+    };
   }
 }
 
@@ -62,5 +90,18 @@ export async function getProfile() {
       return error.response.data
     }
     return { success: false, error: { message: error.message || 'Failed to fetch profile' } }
+  }
+}
+
+export async function updateProfile(profileData) {
+  try {
+    const response = await apiClient.put('/auth/profile/', profileData)
+    return response.data
+  } catch (error) {
+    // Handle error and return consistent format
+    if (error.response?.data) {
+      return error.response.data
+    }
+    return { success: false, error: { message: error.message || 'Failed to update profile' } }
   }
 }

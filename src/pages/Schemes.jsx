@@ -1,85 +1,32 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
+import * as schemesApi from '../services/api/schemes'
 
 const Schemes = () => {
   const { t } = useLanguage()
-  const [schemes, setSchemes] = useState([])
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [verificationText, setVerificationText] = useState('')
   const [verificationResult, setVerificationResult] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
-  // Mock data for government schemes
-  const mockSchemes = [
-    {
-      id: 1,
-      title: 'Pradhan Mantri Awas Yojana',
-      description: 'Affordable housing for all by 2022. Provides financial assistance to eligible beneficiaries for construction of houses.',
-      category: 'Housing',
-      eligibility: 'EWS and LIG categories',
-      benefits: 'Up to ₹2.5 lakh interest subsidy',
-      deadline: '2025-12-31',
-      status: 'active',
-      applicants: 12500
-    },
-    {
-      id: 2,
-      title: 'Ayushman Bharat Yojana',
-      description: 'Health insurance scheme for poor and vulnerable households. Provides coverage up to ₹5 lakh per family per year.',
-      category: 'Healthcare',
-      eligibility: 'Families identified by SECC data',
-      benefits: '₹5 lakh coverage per family',
-      deadline: 'Ongoing',
-      status: 'active',
-      applicants: 45000
-    },
-    {
-      id: 3,
-      title: 'Pradhan Mantri Kisan Samman Nidhi',
-      description: 'Income support scheme for small and marginal farmers. Provides ₹6,000 per year in three equal installments.',
-      category: 'Agriculture',
-      eligibility: 'Small and marginal farmers',
-      benefits: '₹6,000 per year',
-      deadline: 'Ongoing',
-      status: 'active',
-      applicants: 85000
-    },
-    {
-      id: 4,
-      title: 'Skill India Mission',
-      description: 'Training program to develop skilled workforce. Offers various courses in different sectors with placement assistance.',
-      category: 'Employment',
-      eligibility: 'All Indian citizens',
-      benefits: 'Skill development and placement',
-      deadline: 'Ongoing',
-      status: 'active',
-      applicants: 32000
-    },
-    {
-      id: 5,
-      title: 'Beti Bachao Beti Padhao',
-      description: 'Campaign to generate awareness about declining child sex ratio and importance of girl child education.',
-      category: 'Women & Child',
-      eligibility: 'All districts in India',
-      benefits: 'Cash incentives for girl child education',
-      deadline: 'Ongoing',
-      status: 'active',
-      applicants: 18000
-    }
-  ]
+  const { data: schemesData, isLoading, isError } = useQuery({
+    queryKey: ['schemes', filter, searchQuery],
+    queryFn: () => schemesApi.listSchemes({
+      category: filter === 'all' ? undefined : filter,
+      q: searchQuery || undefined
+    }),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setSchemes(mockSchemes)
-      setLoading(false)
-    }, 1000)
-  }, [])
+  const { data: categoriesData } = useQuery({
+    queryKey: ['schemeCategories'],
+    queryFn: schemesApi.getCategories,
+    staleTime: 1000 * 60 * 60, // 1 hour
+  })
 
-  const filteredSchemes = filter === 'all' 
-    ? schemes 
-    : schemes.filter(scheme => scheme.category.toLowerCase() === filter.toLowerCase())
+  const filteredSchemes = schemesData || []
 
   const handleExportInfographic = (schemeId) => {
     // In a real app, this would generate and download an infographic
@@ -112,12 +59,30 @@ const Schemes = () => {
     }
   }
 
-  const categories = [...new Set(schemes.map(scheme => scheme.category))]
+  // Rest of the component code...
 
-  if (loading) {
+  const categories = categoriesData || []
+
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-600">Loading schemes...</span>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="text-red-500 font-bold mb-2">Error Loading Data</div>
+        <p className="text-red-700 mb-4">Failed to load schemes data. Please try again later.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+        >
+          Retry
+        </button>
       </div>
     )
   }
@@ -200,6 +165,8 @@ const Schemes = () => {
                 <input
                   type="text"
                   placeholder={t('schemes_search_placeholder')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <svg className="w-5 h-5 text-gray-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -245,7 +212,7 @@ const Schemes = () => {
                           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                           </svg>
-                          <span>{scheme.applicants.toLocaleString()} applicants</span>
+                          <span>{scheme.applicants?.toLocaleString() || 0} applicants</span>
                         </div>
                       </div>
                       

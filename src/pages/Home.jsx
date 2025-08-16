@@ -1,23 +1,35 @@
-import React, { useState, useEffect } from 'react'
+// Assumptions:
+// - Base URL: import.meta.env.VITE_API_BASE_URL (default http://localhost:8000)
+// - Token storage pattern: in-memory access token + localStorage refresh token
+// - Endpoints used: /api/sentiment/regions/, /api/complaints/heatmap/
+
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useQuery } from '@tanstack/react-query'
+import * as sentimentApi from '../services/api/sentiment'
+import * as complaintsApi from '../services/api/complaints'
 
 const Home = () => {
   const { t } = useLanguage()
   const { user } = useAuth()
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
-  
-  // Mock heatmap data
-  const [heatmapData] = useState([
-    { region: 'Delhi', sentiment: 75, complaints: 120 },
-    { region: 'Mumbai', sentiment: 68, complaints: 95 },
-    { region: 'Bangalore', sentiment: 82, complaints: 78 },
-    { region: 'Chennai', sentiment: 65, complaints: 85 },
-    { region: 'Kolkata', sentiment: 58, complaints: 110 },
-    { region: 'Hyderabad', sentiment: 72, complaints: 65 },
-  ])
+
+  // Fetch sentiment data using React Query
+  const { data: sentimentData, isLoading: sentimentLoading, error: sentimentError } = useQuery({
+    queryKey: ['sentiment', 'regions'],
+    queryFn: sentimentApi.regions,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  // Fetch complaints heatmap data using React Query
+  const { data: complaintsData, isLoading: complaintsLoading, error: complaintsError } = useQuery({
+    queryKey: ['complaints', 'heatmap'],
+    queryFn: complaintsApi.heatmap,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
   // Voice recognition functionality
   const startVoiceRecognition = () => {
@@ -47,6 +59,10 @@ const Home = () => {
       alert('Speech recognition not supported in this browser. Please try Chrome.')
     }
   }
+
+  // Loading and error states for heatmap
+  const isLoading = sentimentLoading || complaintsLoading
+  const isError = sentimentError || complaintsError
 
   return (
     <div className="space-y-12">
@@ -175,43 +191,73 @@ const Home = () => {
       {/* Live Regional Heatmap Preview */}
       <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-8">
         <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">{t('home.heatmap.title')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h3 className="text-xl font-bold mb-4 text-gray-700">{t('home.heatmap.sentimentByRegion')}</h3>
-            <div className="space-y-4">
-              {heatmapData.map((region, index) => (
-                <div key={index} className="flex items-center gap-4">
-                  <div className="w-32 text-gray-600">{region.region}</div>
-                  <div className="flex-1 bg-gray-200 rounded-full h-4">
-                    <div 
-                      className="h-4 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500" 
-                      style={{ width: `${region.sentiment}%` }}
-                    ></div>
-                  </div>
-                  <div className="w-12 text-right font-medium">{region.sentiment}%</div>
-                </div>
-              ))}
+        
+        {/* Loading and Error States */}
+        {isLoading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="flex flex-col items-center">
+              <svg className="animate-spin h-12 w-12 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <p className="mt-4 text-gray-600">Loading dashboard data...</p>
             </div>
           </div>
-          
-          <div>
-            <h3 className="text-xl font-bold mb-4 text-gray-700">{t('home.heatmap.complaintsByRegion')}</h3>
-            <div className="space-y-4">
-              {heatmapData.map((region, index) => (
-                <div key={index} className="flex items-center gap-4">
-                  <div className="w-32 text-gray-600">{region.region}</div>
-                  <div className="flex-1 bg-gray-200 rounded-full h-4">
-                    <div 
-                      className="h-4 rounded-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500" 
-                      style={{ width: `${Math.min(region.complaints, 150)}%` }}
-                    ></div>
+        )}
+        
+        {isError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <div className="text-red-500 font-bold mb-2">{t('error_loading_data')}</div>
+            <p className="text-red-700 mb-4">{t('failed_to_load_dashboard_data')}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+            >
+              {t('retry')}
+            </button>
+          </div>
+        )}
+        
+        {/* Heatmap Content */}
+        {!isLoading && !isError && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-xl font-bold mb-4 text-gray-700">{t('home.heatmap.sentimentByRegion')}</h3>
+              <div className="space-y-4">
+                {sentimentData?.map((region, index) => (
+                  <div key={index} className="flex items-center gap-4">
+                    <div className="w-32 text-gray-600">{region.name}</div>
+                    <div className="flex-1 bg-gray-200 rounded-full h-4">
+                      <div 
+                        className="h-4 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500" 
+                        style={{ width: `${region.sentiment_score}%` }}
+                      ></div>
+                    </div>
+                    <div className="w-12 text-right font-medium">{region.sentiment_score}%</div>
                   </div>
-                  <div className="w-12 text-right font-medium">{region.complaints}</div>
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-xl font-bold mb-4 text-gray-700">{t('home.heatmap.complaintsByRegion')}</h3>
+              <div className="space-y-4">
+                {complaintsData?.map((region, index) => (
+                  <div key={index} className="flex items-center gap-4">
+                    <div className="w-32 text-gray-600">{region.name}</div>
+                    <div className="flex-1 bg-gray-200 rounded-full h-4">
+                      <div 
+                        className="h-4 rounded-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500" 
+                        style={{ width: `${Math.min(region.complaint_count, 150)}%` }}
+                      ></div>
+                    </div>
+                    <div className="w-12 text-right font-medium">{region.complaint_count}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
         
         <div className="mt-8 text-center">
           <Link 
@@ -252,3 +298,4 @@ const Home = () => {
 }
 
 export default Home
+

@@ -1,56 +1,28 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLanguage } from '../contexts/LanguageContext'
+import * as documentsApi from '../services/api/documents'
 
 const Documents = () => {
   const { t } = useLanguage()
-  const [documents, setDocuments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
+  const queryClient = useQueryClient()
 
-  // Mock data for documents
-  const mockDocuments = [
-    {
-      id: 1,
-      name: 'ID Proof.pdf',
-      type: 'pdf',
-      size: '2.4 MB',
-      uploadDate: '2025-08-10',
-      category: 'Identity'
-    },
-    {
-      id: 2,
-      name: 'Address Proof.jpg',
-      type: 'image',
-      size: '1.8 MB',
-      uploadDate: '2025-08-09',
-      category: 'Address'
-    },
-    {
-      id: 3,
-      name: 'Income Certificate.pdf',
-      type: 'pdf',
-      size: '1.2 MB',
-      uploadDate: '2025-08-05',
-      category: 'Income'
-    },
-    {
-      id: 4,
-      name: 'Application Form.docx',
-      type: 'document',
-      size: '0.8 MB',
-      uploadDate: '2025-08-03',
-      category: 'Application'
-    }
-  ]
+  const { data: documentsData, isLoading, isError } = useQuery({
+    queryKey: ['documents'],
+    queryFn: documentsApi.listDocuments,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setDocuments(mockDocuments)
-      setLoading(false)
-    }, 1000)
-  }, [])
+  const documents = documentsData || []
+
+  const uploadMutation = useMutation({
+    mutationFn: documentsApi.uploadDocument,
+    onSuccess: () => {
+      // Invalidate and refetch documents
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+    },
+  })
 
   const handleFileChange = (e) => {
     setSelectedFile(e.target.files[0])
@@ -60,23 +32,7 @@ const Documents = () => {
     e.preventDefault()
     if (!selectedFile) return
 
-    setUploading(true)
-    
-    // Simulate file upload
-    setTimeout(() => {
-      const newDocument = {
-        id: documents.length + 1,
-        name: selectedFile.name,
-        type: selectedFile.type.split('/')[0] || 'document',
-        size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
-        uploadDate: new Date().toISOString().split('T')[0],
-        category: 'Uploaded'
-      }
-      
-      setDocuments([newDocument, ...documents])
-      setSelectedFile(null)
-      setUploading(false)
-    }, 2000)
+    uploadMutation.mutate(selectedFile)
   }
 
   const getFileIcon = (type) => {
@@ -108,11 +64,26 @@ const Documents = () => {
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         <span className="ml-4 text-gray-600">{t('documents_loading')}</span>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="text-red-500 font-bold mb-2">Error Loading Data</div>
+        <p className="text-red-700 mb-4">Failed to load documents. Please try again later.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+        >
+          Retry
+        </button>
       </div>
     )
   }
@@ -136,10 +107,10 @@ const Documents = () => {
           </div>
           <button 
             type="submit" 
-            disabled={!selectedFile || uploading}
+            disabled={!selectedFile || uploadMutation.isPending}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {uploading ? t('documents_uploading') : t('documents_upload')}
+            {uploadMutation.isPending ? t('documents_uploading') : t('documents_upload')}
           </button>
         </form>
       </div>

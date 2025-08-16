@@ -11,8 +11,8 @@ const translations = {
     // Login page
     login_title: 'Welcome Back',
     login_subtitle: 'Sign in to your CiviLens account',
-    login_username: 'Username',
-    login_username_placeholder: 'Enter your username',
+    login_email: 'Email Address',
+    login_email_placeholder: 'Enter your email',
     login_password: 'Password',
     login_password_placeholder: 'Enter your password',
     login_remember_me: 'Remember me',
@@ -297,8 +297,8 @@ const translations = {
     // Login page
     login_title: 'वापसी पर स्वागत है',
     login_subtitle: 'अपने CiviLens खाते में साइन इन करें',
-    login_username: 'उपयोगकर्ता नाम',
-    login_username_placeholder: 'अपना उपयोगकर्ता नाम दर्ज करें',
+    login_email: 'ईमेल पता',
+    login_email_placeholder: 'अपना ईमेल दर्ज करें',
     login_password: 'पासवर्ड',
     login_password_placeholder: 'अपना पासवर्ड दर्ज करें',
     login_remember_me: 'मुझे याद रखें',
@@ -583,8 +583,8 @@ const translations = {
     // Login page
     login_title: 'மீண்டும் வரவேற்கிறோம்',
     login_subtitle: 'உங்கள் CiviLens கணக்கில் உள்நுழைக',
-    login_username: 'பயனர்பெயர்',
-    login_username_placeholder: 'உங்கள் பயனர்பெயரை உள்ளிடவும்',
+    login_email: 'மின்னஞ்சல் முகவரி',
+    login_email_placeholder: 'உங்கள் மின்னஞ்சலை உள்ளிடவும்',
     login_password: 'கடவுச்சொல்',
     login_password_placeholder: 'உங்கள் கடவுச்சொல்லை உள்ளிடவும்',
     login_remember_me: 'என்னை நினைவில் கொள்',

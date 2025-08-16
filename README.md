@@ -74,6 +74,73 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## API Integration
+
+This frontend application integrates with a Django backend API. All data fetching and mutations are handled through React Query for efficient caching and state management.
+
+### Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+### API Services
+
+The application uses the following API services:
+- Authentication (registration, login, refresh, logout)
+- Schemes (list, details, categories, search)
+- Complaints (create, list, details, update, heatmap)
+- Discussions (list, create, add comment)
+- Documents (list, upload, delete)
+- Regions (list)
+- Sentiment (analysis)
+- Chat (messages, send)
+- Admin (users, stats)
+
+## Testing
+
+### Running the Application
+
+1. Ensure the backend Django server is running on `http://localhost:8000`
+2. Install frontend dependencies: `npm install`
+3. Start the development server: `npm run dev`
+4. Open the application in your browser (typically at `http://localhost:5173` or `http://localhost:5174`)
+
+### Testing User Flows
+
+1. **Registration & Login**
+   - Navigate to `/signup` to create a new account
+   - After registration, proceed to `/login` to authenticate
+   - Verify that you are redirected to the home page after successful login
+
+2. **Scheme Browsing**
+   - Navigate to `/schemes` to view all government schemes
+   - Use the search and filter functionality to find specific schemes
+   - Click on any scheme to view detailed information
+
+3. **Complaint Submission**
+   - Navigate to `/complaints` to view existing complaints
+   - Click "New Complaint" to create a new complaint
+   - Fill in the complaint details and submit
+   - Verify that the new complaint appears in the complaints list
+
+4. **Discussion Participation**
+   - Navigate to `/discussions` to view all discussions
+   - Create a new discussion topic
+   - Add comments to existing discussions
+
+5. **Document Management**
+   - Navigate to `/documents` to view uploaded documents
+   - Upload a new document and verify it appears in the list
+   - Delete a document and verify it is removed from the list
+
+6. **Admin Functionality**
+   - Log in as an admin user
+   - Navigate to `/admin` to view admin panel
+   - Verify user management and statistics display
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/7e739d4d-9a69-4c24-a53d-662f2d59d008) and click on Share -> Publish.

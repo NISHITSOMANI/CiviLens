@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
+import { useLanguage } from '../contexts/LanguageContext'
+import * as authApi from '../services/api/auth'
 
 const Profile = () => {
-  const [profileData, setProfileData] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     username: '',
@@ -16,53 +17,54 @@ const Profile = () => {
     address: ''
   })
   
-  const { user, getProfile } = useAuth()
+  const { user } = useAuth()
   const { showToast } = useToast()
+  const { t } = useLanguage()
+  const queryClient = useQueryClient()
 
-  useEffect(() => {
-    fetchProfile()
-  }, [])
-
-  const fetchProfile = async () => {
-    try {
-      setLoading(true)
-      const profile = await getProfile()
-      
-      // If we got a profile, update the state
-      if (profile) {
-        setProfileData(profile)
-        setFormData({
-          username: profile.username || '',
-          email: profile.email || '',
-          role: profile.role || '',
-          first_name: profile.first_name || '',
-          last_name: profile.last_name || '',
-          phone: profile.phone || '',
-          address: profile.address || ''
-        })
+  // Fetch profile data using React Query
+  const { data: profileData, isLoading, isError, error } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const response = await authApi.getProfile()
+      if (response.success) {
+        return response.data
       } else {
-        // If no profile data was returned, show an error
-        console.error('No profile data received')
-        showToast('No profile data available', 'error')
+        throw new Error(response.error?.message || 'Failed to fetch profile')
       }
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-      // Check if user is still logged in before showing error toast
-      const accessToken = localStorage.getItem('accessToken')
-      const userData = localStorage.getItem('user')
-      
-      // Only show error toast if user is still logged in
-      if (accessToken && userData) {
-        // Don't show the error message if it's just a 401 (handled by AuthContext)
-        if (error.message !== 'Request failed with status code 401') {
-          showToast(error.message || 'Failed to load profile data', 'error')
-        }
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: authApi.updateProfile,
+    onSuccess: (response) => {
+      if (response.success) {
+        // Update the profile cache
+        queryClient.setQueryData(['profile'], response.data)
+        
+        // Update form data
+        setFormData({
+          username: response.data.username || '',
+          email: response.data.email || '',
+          role: response.data.role || '',
+          first_name: response.data.first_name || '',
+          last_name: response.data.last_name || '',
+          phone: response.data.phone || '',
+          address: response.data.address || ''
+        })
+        
+        setIsEditing(false)
+        showToast(t('profile_updated_successfully'), 'success')
+      } else {
+        showToast(response.error?.message || t('failed_to_update_profile'), 'error')
       }
-      // If user was logged out during the request, don't show error toast
-    } finally {
-      setLoading(false)
+    },
+    onError: (error) => {
+      showToast(error.message || t('failed_to_update_profile'), 'error')
     }
-  }
+  })
 
   const handleEdit = () => {
     setIsEditing(true)
@@ -84,30 +86,30 @@ const Profile = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    // In a real app, you would send the updated data to the backend
-    // For now, we'll just simulate the update
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Update profile data
-      setProfileData({
-        ...profileData,
-        ...formData
-      })
-      
-      setIsEditing(false)
-      showToast('Profile updated successfully', 'success')
-    } catch (error) {
-      console.error('Error updating profile:', error)
-      showToast('Failed to update profile', 'error')
-    }
+    // Send updated data to the backend using mutation
+    updateProfileMutation.mutate(formData)
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-600">{t('loading')}</span>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+        <p className="text-red-700 font-medium">{t('error_loading_profile')}</p>
+        <p className="text-red-600 text-sm mt-1">{error?.message || t('try_again_later')}</p>
+        <button 
+          onClick={() => queryClient.invalidateQueries(['profile'])}
+          className="mt-3 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+        >
+          {t('retry')}
+        </button>
       </div>
     )
   }
@@ -115,8 +117,8 @@ const Profile = () => {
   if (!profileData) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Profile Not Found</h2>
-        <p className="text-gray-600">Unable to load profile data.</p>
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">{t('profile_not_found')}</h2>
+        <p className="text-gray-600">{t('unable_to_load_profile_data')}</p>
       </div>
     )
   }

@@ -6,7 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 
 const Login = () => {
   const { t } = useLanguage()
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   
@@ -16,16 +16,37 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    console.log('Login form submitted')
+    
+    // Basic email validation
+    if (!email) {
+      console.log('Email is empty')
+      showToast(t('login_email_placeholder'), 'error')
+      return
+    }
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      console.log('Invalid email format:', email)
+      showToast(t('login_email_placeholder'), 'error')
+      return
+    }
+    
+    console.log('Attempting login with email:', email)
     setIsLoading(true)
 
     try {
-      const result = await login({ username, password })
+      console.log('Calling login function with:', { email, password: '***' })
+      const result = await login({ email, password })
+      console.log('Login result:', result)
       
-      if (result.success) {
+      if (result && result.success) {
+        console.log('Login successful, redirecting to home')
         showToast('Login successful! Welcome back.', 'success')
         navigate('/')
       } else {
-        showToast(result.error?.message || 'Login failed', 'error')
+        const errorMsg = result?.error?.message || 'Login failed'
+        console.log('Login failed:', errorMsg)
+        showToast(errorMsg, 'error')
       }
     } catch (error) {
       console.error('Login error:', error)
@@ -44,15 +65,15 @@ const Login = () => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">{t('login_username')}</label>
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">{t('login_email')}</label>
           <input
-            id="username"
-            type="text"
+            id="email"
+            type="email"
             required
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder={t('login_username_placeholder')}
+            placeholder={t('login_email_placeholder')}
           />
         </div>
 

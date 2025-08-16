@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -16,16 +16,43 @@ import Documents from './pages/Documents'
 import Regions from './pages/Regions'
 import Sentiment from './pages/Sentiment'
 import AdminPanel from './pages/AdminPanel'
+import ComplaintDetail from './pages/ComplaintDetail'
 import { AuthProvider } from './contexts/AuthContext'
-import { ToastProvider } from './contexts/ToastContext'
+import { ToastProvider, useToast } from './contexts/ToastContext'
 import { LanguageProvider } from './contexts/LanguageContext'
-
+import * as healthApi from './services/api/health'
 function App() {
   return (
     <AuthProvider>
       <LanguageProvider>
         <ToastProvider>
-          <Router>
+          <AppContent />
+        </ToastProvider>
+      </LanguageProvider>
+    </AuthProvider>
+  )
+}
+
+function AppContent() {
+  const { addToast } = useToast()
+
+  useEffect(() => {
+    // Perform health check on app boot
+    const performHealthCheck = async () => {
+      try {
+        await healthApi.checkHealth()
+        console.log('Health check passed')
+      } catch (error) {
+        console.error('Health check failed:', error)
+        addToast('Application health check failed. Some features may not work properly.', 'error')
+      }
+    }
+
+    performHealthCheck()
+  }, [addToast])
+
+  return (
+    <Router>
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
               <Navbar />
               <main className="flex-grow container mx-auto px-4 py-8">
@@ -36,6 +63,7 @@ function App() {
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/complaints" element={<Complaints />} />
                   <Route path="/complaints/new" element={<NewComplaint />} />
+                  <Route path="/complaints/:id" element={<ComplaintDetail />} />
                   <Route path="/schemes" element={<Schemes />} />
                   <Route path="/schemes/:id" element={<SchemeDetail />} />
                   <Route path="/discussions" element={<Discussions />} />
@@ -48,10 +76,7 @@ function App() {
               </main>
               <Footer />
             </div>
-          </Router>
-        </ToastProvider>
-      </LanguageProvider>
-    </AuthProvider>
+    </Router>
   )
 }
 

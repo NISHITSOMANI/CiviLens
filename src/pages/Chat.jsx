@@ -1,43 +1,55 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useRef } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '../contexts/AuthContext'
+import { useLanguage } from '../contexts/LanguageContext'
+import * as chatApi from '../services/api/chat'
 
 const Chat = () => {
-  const [messages, setMessages] = useState([])
+  const { user } = useAuth()
+  const { t } = useLanguage()
   const [newMessage, setNewMessage] = useState('')
-  const [loading, setLoading] = useState(true)
   const messagesEndRef = useRef(null)
+  const queryClient = useQueryClient()
 
-  // Mock chat data
-  const mockMessages = [
-    {
-      id: 1,
-      sender: 'Admin',
-      content: t('chat_welcome_message'),
-      timestamp: '2025-08-14T10:30:00',
-      isOwn: false
+  // Fetch chat messages using React Query
+  const { data: messages = [], isLoading, isError, error } = useQuery({
+    queryKey: ['chatMessages'],
+    queryFn: async () => {
+      // For now, we'll return an empty array as we don't have a getMessages endpoint
+      // In a real implementation, this would fetch existing messages
+      return []
     },
-    {
-      id: 2,
-      sender: user?.username || 'You',
-      content: t('chat_user_complaint_question'),
-      timestamp: '2025-08-14T10:32:00',
-      isOwn: true
-    },
-    {
-      id: 3,
-      sender: 'Admin',
-      content: t('chat_admin_response'),
-      timestamp: '2025-08-14T10:33:00',
-      isOwn: false
-    }
-  ]
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
-  useEffect(() => {
-    // Simulate fetching chat messages
-    setTimeout(() => {
-      setMessages(mockMessages)
-      setLoading(false)
-    }, 1000)
-  }, [user])
+  // Send message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: chatApi.sendMessage,
+    onSuccess: (newMessageData) => {
+      // Add the new message to the chat
+      // Note: In a real implementation, we would get the full message object from the API
+      const message = {
+        id: Date.now(), // Temporary ID
+        sender: user?.username || 'You',
+        content: newMessage,
+        timestamp: new Date().toISOString(),
+        isOwn: true,
+        // Add any other data returned from the API
+        ...newMessageData
+      }
+      
+      // Update the messages cache
+      queryClient.setQueryData(['chatMessages'], (oldMessages = []) => [...oldMessages, message])
+      
+      // Clear the input
+      setNewMessage('')
+      
+      // Scroll to bottom
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+    },
+  })
 
   useEffect(() => {
     scrollToBottom()
@@ -50,39 +62,38 @@ const Chat = () => {
   const handleSendMessage = (e) => {
     e.preventDefault()
     if (newMessage.trim() === '') return
-
-    const message = {
-      id: messages.length + 1,
-      sender: user?.username || 'You',
-      content: newMessage,
-      timestamp: new Date().toISOString(),
-      isOwn: true
-    }
-
-    setMessages(prev => [...prev, message])
-    setNewMessage('')
-
-    // Simulate admin response
-    setTimeout(() => {
-      const adminResponse = {
-        id: messages.length + 2,
-        sender: 'Admin',
-        content: t('chat_auto_response'),
-        timestamp: new Date().toISOString(),
-        isOwn: false
-      }
-      setMessages(prev => [...prev, adminResponse])
-    }, 2000)
+    
+    // Send message using mutation
+    sendMessageMutation.mutate({
+      message: newMessage,
+      userId: user?.id
+    })
   }
 
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-600">{t('loading')}</span>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+        <p className="text-red-700 font-medium">{t('error_loading_chat')}</p>
+        <p className="text-red-600 text-sm mt-1">{error?.message || t('try_again_later')}</p>
+        <button 
+          onClick={() => queryClient.invalidateQueries(['chatMessages'])}
+          className="mt-3 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+        >
+          {t('retry')}
+        </button>
       </div>
     )
   }

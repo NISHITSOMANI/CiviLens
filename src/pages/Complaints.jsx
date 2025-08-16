@@ -1,65 +1,36 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useAuth } from '../contexts/AuthContext'
+import * as complaintsApi from '../services/api/complaints'
 
 const Complaints = () => {
   const { t } = useLanguage()
-  const [complaints, setComplaints] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [filter, setFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
-  // Mock data for complaints
-  const mockComplaints = [
-    {
-      id: 1,
-      title: 'Street Light Not Working',
-      description: 'The street light near the main entrance of our colony has been faulty for the past week.',
-      status: 'pending',
-      category: 'Infrastructure',
-      location: 'Sector 12, Dwarka',
-      date: '2025-08-10',
-      upvotes: 12
-    },
-    {
-      id: 2,
-      title: 'Water Supply Issue',
-      description: 'Irregular water supply in our area for the past 3 days. Please look into the matter.',
-      status: 'resolved',
-      category: 'Utilities',
-      location: 'Sector 23, Rohini',
-      date: '2025-08-08',
-      upvotes: 8
-    },
-    {
-      id: 3,
-      title: 'Garbage Collection Delay',
-      description: 'Garbage has not been collected for the past 5 days. It is causing a bad smell in the area.',
-      status: 'in_progress',
-      category: 'Sanitation',
-      location: 'Sector 7, Vaishali',
-      date: '2025-08-12',
-      upvotes: 25
-    },
-    {
-      id: 4,
-      title: 'Road Repair Needed',
-      description: 'Potholes on the main road near the market are causing damage to vehicles.',
-      status: 'pending',
-      category: 'Infrastructure',
-      location: 'Sector 15, Pitampura',
-      date: '2025-08-14',
-      upvotes: 17
+  const { data: complaintsData, isLoading, isError } = useQuery({
+    queryKey: ['complaints'],
+    queryFn: complaintsApi.listComplaints,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  const complaints = complaintsData || []
+  
+  const handleNewComplaintClick = (e) => {
+    e.preventDefault()
+    if (!user) {
+      // Not logged in: send to login page
+      navigate('/login')
+      return
     }
-  ]
-
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setComplaints(mockComplaints)
-      setLoading(false)
-    }, 1000)
-  }, [])
-
+    // Logged in: go to new complaint page
+    navigate('/complaints/new')
+  }
+  
   const filteredComplaints = filter === 'all' 
     ? complaints 
     : complaints.filter(complaint => complaint.category === filter)
@@ -84,10 +55,26 @@ const Complaints = () => {
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-600">Loading complaints...</span>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="text-red-500 font-bold mb-2">Error Loading Data</div>
+        <p className="text-red-700 mb-4">Failed to load complaints data. Please try again later.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+        >
+          Retry
+        </button>
       </div>
     )
   }
@@ -99,12 +86,13 @@ const Complaints = () => {
           <h2 className="text-3xl font-bold text-gray-800">{t('complaints_title')}</h2>
           <p className="text-gray-600 mt-2">{t('complaints_subtitle')}</p>
         </div>
-        <Link 
-          to="/complaints/new" 
+        <a
+          href="/complaints/new"
+          onClick={handleNewComplaintClick}
           className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 hover:from-blue-600 hover:to-indigo-700 text-center"
         >
           {t('complaints_file_new')}
-        </Link>
+        </a>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -147,6 +135,8 @@ const Complaints = () => {
                 <input
                   type="text"
                   placeholder={t('complaints_search_placeholder')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <svg className="w-5 h-5 text-gray-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

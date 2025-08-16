@@ -1,21 +1,66 @@
-import React, { useState } from 'react'
+// Assumptions:
+// - Base URL: import.meta.env.VITE_API_BASE_URL (default http://localhost:8000)
+// - Token storage pattern: in-memory access token + localStorage refresh token
+// - Endpoints used: /api/auth/register/, /api/regions/
+
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { useLanguage } from '../contexts/LanguageContext'
+// Temporarily disable language context feature
+// import { useLanguage } from '../contexts/LanguageContext'
+import { useQuery } from '@tanstack/react-query'
+import * as regionsApi from '../services/api/regions'
 
 const Signup = () => {
-  const { t } = useLanguage()
+  // Temporarily disable language context feature
+  // const { t } = useLanguage()
+  const t = (key) => {
+    const translations = {
+      'signup_title': 'Create Account',
+      'signup_subtitle': 'Join our community to make a difference',
+      'signup_username': 'Username',
+      'signup_username_placeholder': 'Enter your username',
+      'signup_email': 'Email',
+      'signup_email_placeholder': 'Enter your email',
+      'signup_password': 'Password',
+      'signup_password_placeholder': 'Enter your password',
+      'signup_confirm_password': 'Confirm Password',
+      'signup_confirm_password_placeholder': 'Confirm your password',
+      'signup_role': 'Role',
+      'signup_role_citizen': 'Citizen',
+      'signup_role_official': 'Government Official',
+      'signup_role_admin': 'Administrator',
+      'signup_region': 'Region',
+      'signup_region_placeholder': 'Select your region',
+      'signup_creating_account': 'Creating Account...',
+      'signup_sign_up': 'Sign Up',
+      'signup_already_have_account': 'Already have an account?',
+      'signup_sign_in': 'Sign In',
+      'signup_select_region': 'Please select a region',
+      'signup_region_required': 'Region is required'
+    }
+    return translations[key] || key
+  }
+  
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [role, setRole] = useState('citizen')
+  const [region, setRegion] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   
   const { register } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
+
+  // Fetch regions using React Query
+  const { data: regionsData, isLoading: regionsLoading, error: regionsError } = useQuery({
+    queryKey: ['regions'],
+    queryFn: regionsApi.listRegions,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -30,10 +75,16 @@ const Signup = () => {
       return
     }
 
+    if (!region) {
+      showToast(t('signup_region_required'), 'error')
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const result = await register({ username, email, password, role })
+      // Include region in registration data
+      const result = await register({ username, email, password, role, region })
       
       if (result.success) {
         showToast('Account created successfully! Please login to continue.', 'success')
@@ -123,9 +174,39 @@ const Signup = () => {
           </select>
         </div>
 
+        <div>
+          <label htmlFor="region" className="block text-sm font-medium text-gray-700 mb-1">{t('signup_region')}</label>
+          {regionsLoading ? (
+            <div className="flex items-center justify-center py-2">
+              <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="ml-2 text-gray-500">Loading regions...</span>
+            </div>
+          ) : regionsError ? (
+            <div className="text-red-500 text-sm py-2">Failed to load regions. Please try again later.</div>
+          ) : (
+            <select
+              id="region"
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            >
+              <option value="">{t('signup_select_region')}</option>
+              {regionsData?.map((regionItem) => (
+                <option key={regionItem.id} value={regionItem.id}>
+                  {regionItem.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || regionsLoading}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (

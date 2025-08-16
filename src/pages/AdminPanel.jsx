@@ -1,90 +1,62 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import * as adminApi from '../services/api/admin'
+import { toast } from 'react-hot-toast'
 
 const AdminPanel = () => {
   const { t } = useLanguage()
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [filter, setFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Mock data for users
-  const mockUsers = [
-    {
-      id: 1,
-      username: 'admin_user',
-      email: 'admin@civilens.com',
-      role: 'admin',
-      date_joined: '2025-01-15',
-      last_login: '2025-08-14',
-      is_active: true,
-      complaints: 0,
-      schemes: 0
-    },
-    {
-      id: 2,
-      username: 'gov_official_1',
-      email: 'official1@gov.in',
-      role: 'official',
-      date_joined: '2025-03-22',
-      last_login: '2025-08-13',
-      is_active: true,
-      complaints: 120,
-      schemes: 8
-    },
-    {
-      id: 3,
-      username: 'citizen_user_1',
-      email: 'citizen1@email.com',
-      role: 'citizen',
-      date_joined: '2025-05-10',
-      last_login: '2025-08-14',
-      is_active: true,
-      complaints: 3,
-      schemes: 1
-    },
-    {
-      id: 4,
-      username: 'gov_official_2',
-      email: 'official2@gov.in',
-      role: 'official',
-      date_joined: '2025-06-18',
-      last_login: '2025-08-12',
-      is_active: true,
-      complaints: 85,
-      schemes: 5
-    },
-    {
-      id: 5,
-      username: 'inactive_user',
-      email: 'inactive@email.com',
-      role: 'citizen',
-      date_joined: '2025-07-01',
-      last_login: '2025-07-15',
-      is_active: false,
-      complaints: 0,
-      schemes: 0
-    },
-    {
-      id: 6,
-      username: 'citizen_user_2',
-      email: 'citizen2@email.com',
-      role: 'citizen',
-      date_joined: '2025-07-20',
-      last_login: '2025-08-14',
-      is_active: true,
-      complaints: 2,
-      schemes: 0
+  // Fetch users using React Query
+  const { data: users = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ['admin', 'users'],
+    queryFn: adminApi.getUsers,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    onError: (error) => {
+      toast.error(t('adminPanel.fetchError') || 'Failed to load users')
+      console.error('Error fetching users:', error)
     }
-  ]
+  })
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setUsers(mockUsers)
-      setLoading(false)
-    }, 1000)
-  }, [])
+  // Fetch admin stats using React Query
+  const { data: stats = {} } = useQuery({
+    queryKey: ['admin', 'stats'],
+    queryFn: adminApi.getStats,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    onError: (error) => {
+      toast.error(t('adminPanel.statsFetchError') || 'Failed to load stats')
+      console.error('Error fetching stats:', error)
+    }
+  })
+
+  // Update user status mutation
+  const updateUserStatusMutation = useMutation({
+    mutationFn: ({ userId, isActive }) => adminApi.updateUserStatus(userId, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['admin', 'users'])
+      toast.success(t('adminPanel.userStatusUpdated') || 'User status updated successfully')
+    },
+    onError: (error) => {
+      toast.error(t('adminPanel.userStatusUpdateError') || 'Failed to update user status')
+      console.error('Error updating user status:', error)
+    }
+  })
+
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId) => adminApi.deleteUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['admin', 'users'])
+      toast.success(t('adminPanel.userDeleted') || 'User deleted successfully')
+    },
+    onError: (error) => {
+      toast.error(t('adminPanel.userDeleteError') || 'Failed to delete user')
+      console.error('Error deleting user:', error)
+    }
+  })
 
   const filteredUsers = users.filter(user => {
     // Apply role filter
@@ -103,16 +75,15 @@ const AdminPanel = () => {
   })
 
   const handleToggleStatus = (userId) => {
-    setUsers(users.map(user => 
-      user.id === userId 
-        ? { ...user, is_active: !user.is_active } 
-        : user
-    ))
+    const user = users.find(u => u.id === userId)
+    if (user) {
+      updateUserStatusMutation.mutate({ userId, isActive: !user.is_active })
+    }
   }
 
   const handleDeleteUser = (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter(user => user.id !== userId))
+    if (window.confirm(t('adminPanel.deleteConfirm') || 'Are you sure you want to delete this user?')) {
+      deleteUserMutation.mutate(userId)
     }
   }
 
@@ -124,10 +95,25 @@ const AdminPanel = () => {
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="text-red-500 font-bold mb-2">{t('error_loading_data')}</div>
+        <p className="text-red-700 mb-4">{t('failed_to_load_admin_data')}</p>
+        <button 
+          onClick={() => refetch()} 
+          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+        >
+          {t('retry')}
+        </button>
       </div>
     )
   }
@@ -269,7 +255,7 @@ const AdminPanel = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">{t('adminPanel.stats.totalUsers')}</p>
-              <p className="text-2xl font-bold">{users.length}</p>
+              <p className="text-2xl font-bold">{stats.totalUsers || users.length}</p>
             </div>
           </div>
         </div>
@@ -283,7 +269,7 @@ const AdminPanel = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">{t('adminPanel.stats.activeUsers')}</p>
-              <p className="text-2xl font-bold">{users.filter(u => u.is_active).length}</p>
+              <p className="text-2xl font-bold">{stats.activeUsers || users.filter(u => u.is_active).length}</p>
             </div>
           </div>
         </div>
@@ -297,7 +283,7 @@ const AdminPanel = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">{t('adminPanel.stats.officials')}</p>
-              <p className="text-2xl font-bold">{users.filter(u => u.role === 'official').length}</p>
+              <p className="text-2xl font-bold">{stats.officials || users.filter(u => u.role === 'official').length}</p>
             </div>
           </div>
         </div>
@@ -311,7 +297,7 @@ const AdminPanel = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">{t('adminPanel.stats.admins')}</p>
-              <p className="text-2xl font-bold">{users.filter(u => u.role === 'admin').length}</p>
+              <p className="text-2xl font-bold">{stats.admins || users.filter(u => u.role === 'admin').length}</p>
             </div>
           </div>
         </div>

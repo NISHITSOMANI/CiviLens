@@ -46,14 +46,14 @@ def create_user(username, email, password, role='user', region=None):
     print(f"User created successfully with ID: {user_doc['_id']}")
     return user_doc
 
-# Helper function to get user by username
-def get_user_by_username(username):
+# Helper function to get user by email
+def get_user_by_email(email):
     users_collection = db['users']
-    return users_collection.find_one({'username': username})
+    return users_collection.find_one({'email': email})
 
 # Helper function to authenticate user
-def authenticate_user(username, password):
-    user = get_user_by_username(username)
+def authenticate_user(email, password):
+    user = get_user_by_email(email)
     if user and verify_password(password, user['password']):
         return user
     return None
@@ -131,11 +131,21 @@ class LoginView(View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            username = data.get('username')
+            email = data.get('email')
             password = data.get('password')
-            user = authenticate_user(username, password)
+            
+            if not email or not password:
+                return JsonResponse(
+                    {'success': False, 'error': {'message': 'Email and password are required'}}, 
+                    status=400
+                )
+            
+            user = authenticate_user(email, password)
             if user is None:
-                return JsonResponse({'success': False, 'error': {'message':'Invalid credentials'}}, status=401)
+                return JsonResponse(
+                    {'success': False, 'error': {'message': 'Invalid email or password'}}, 
+                    status=401
+                )
             
             # Create refresh token in MongoDB
             refresh_tokens_collection = db['refresh_tokens']
@@ -148,9 +158,32 @@ class LoginView(View):
             })
             
             access = create_access_token(user)
-            return JsonResponse({'success': True, 'data': {'access': access, 'refresh': refresh, 'user': {'id': str(user['_id']), 'username': user['username'], 'role': user['role']}}})
+            return JsonResponse({
+                'success': True, 
+                'data': {
+                    'access': access, 
+                    'refresh': refresh, 
+                    'user': {
+                        'id': str(user['_id']), 
+                        'username': user['username'],
+                        'email': user['email'],
+                        'role': user['role']
+                    }
+                }
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {'success': False, 'error': {'message': 'Invalid JSON'}}, 
+                status=400
+            )
         except Exception as e:
-            return JsonResponse({'success': False, 'error': {'message': str(e)}}, status=400)
+            import traceback
+            traceback.print_exc()
+            return JsonResponse(
+                {'success': False, 'error': {'message': 'An error occurred during login'}}, 
+                status=500
+            )
 
 class ProfileView(View):
     def get(self, request):

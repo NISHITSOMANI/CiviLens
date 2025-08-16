@@ -1,138 +1,39 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useQuery } from '@tanstack/react-query'
+import * as schemesApi from '../services/api/schemes'
+import { toast } from 'react-hot-toast'
 
 const SchemeDetail = () => {
   const { t } = useLanguage()
   const { id } = useParams()
-  const [scheme, setScheme] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [vote, setVote] = useState(0) // -1 for downvote, 0 for no vote, 1 for upvote
-  const [voteCount, setVoteCount] = useState({ upvotes: 0, downvotes: 0 })
 
-  // Mock data for government schemes
-  const mockSchemes = [
-    {
-      id: 1,
-      title: 'Pradhan Mantri Awas Yojana',
-      description: 'Affordable housing for all by 2022. Provides financial assistance to eligible beneficiaries for construction of houses.',
-      category: 'Housing',
-      eligibility: 'EWS and LIG categories',
-      benefits: 'Up to ₹2.5 lakh interest subsidy',
-      deadline: '2025-12-31',
-      status: 'active',
-      applicants: 12500,
-      overview: 'The Pradhan Mantri Awas Yojana (PMAY) is a flagship initiative of the Government of India aimed at providing affordable housing to all citizens by 2022. The scheme focuses on creating sustainable and inclusive housing opportunities for the economically weaker sections and low-income groups.',
-      objectives: [
-        'Provide affordable housing to all by 2022',
-        'Improve living conditions for urban poor',
-        'Promote sustainable and inclusive housing',
-        'Create employment opportunities in construction sector'
-      ],
-      documents: [
-        'Application Form',
-        'Income Certificate',
-        'Address Proof',
-        'Bank Passbook'
-      ],
-      faqs: [
-        {
-          question: 'Who is eligible for PMAY?',
-          answer: 'Economically Weaker Sections (EWS) and Low Income Groups (LIG) are eligible for the scheme.'
-        },
-        {
-          question: 'What is the maximum loan amount?',
-          answer: 'The maximum loan amount varies based on location and beneficiary category.'
-        }
-      ]
-    },
-    {
-      id: 2,
-      title: 'Ayushman Bharat Yojana',
-      description: 'Health insurance scheme for poor and vulnerable households. Provides coverage up to ₹5 lakh per family per year.',
-      category: 'Healthcare',
-      eligibility: 'Families identified by SECC data',
-      benefits: '₹5 lakh coverage per family',
-      deadline: 'Ongoing',
-      status: 'active',
-      applicants: 45000,
-      overview: 'Ayushman Bharat is a pioneering initiative that aims to achieve Universal Health Coverage in India. The scheme provides cashless health insurance coverage of up to ₹5 lakh per family per year for secondary and tertiary care hospitalization.',
-      objectives: [
-        'Provide health insurance coverage to 10 crore poor families',
-        'Reduce out-of-pocket expenditure on healthcare',
-        'Improve access to quality healthcare services',
-        'Strengthen healthcare infrastructure'
-      ],
-      documents: [
-        'Ration Card',
-        'Aadhaar Card',
-        'Family Photo',
-        'Income Certificate'
-      ],
-      faqs: [
-        {
-          question: 'How can I check if my family is eligible?',
-          answer: 'Families identified by SECC data are automatically eligible for the scheme.'
-        },
-        {
-          question: 'What treatments are covered under the scheme?',
-          answer: 'The scheme covers secondary and tertiary care hospitalization treatments.'
-        }
-      ]
-    },
-    {
-      id: 3,
-      title: 'Pradhan Mantri Kisan Samman Nidhi',
-      description: 'Income support scheme for small and marginal farmers. Provides ₹6,000 per year in three equal installments.',
-      category: 'Agriculture',
-      eligibility: 'Small and marginal farmers',
-      benefits: '₹6,000 per year',
-      deadline: 'Ongoing',
-      status: 'active',
-      applicants: 85000,
-      overview: 'PM-KISAN is a Central Sector scheme with 100% funding from Government of India. It provides income support of ₹6,000 per year to all landholding farmer families across the country in three equal installments.',
-      objectives: [
-        'Provide financial support to small and marginal farmers',
-        'Supplement income for meeting various expenses',
-        'Promote agricultural productivity',
-        'Ensure food security for the nation'
-      ],
-      documents: [
-        'Land Ownership Documents',
-        'Aadhaar Card',
-        'Bank Account Details',
-        'Farmer Registration Form'
-      ],
-      faqs: [
-        {
-          question: 'How often is the benefit transferred?',
-          answer: 'The benefit is transferred directly to the bank accounts of beneficiaries in three equal installments of ₹2,000 each.'
-        },
-        {
-          question: 'Can tenant farmers apply for the scheme?',
-          answer: 'Yes, tenant farmers can apply if they have valid land documents.'
-        }
-      ]
+  // Fetch scheme details using React Query
+  const { data: scheme, isLoading, isError, refetch } = useQuery({
+    queryKey: ['scheme', id],
+    queryFn: () => schemesApi.getScheme(id),
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    onError: (error) => {
+      toast.error(t('scheme_detail_fetch_error') || 'Failed to load scheme details')
+      console.error('Error fetching scheme:', error)
     }
-  ]
+  })
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const schemeData = mockSchemes.find(scheme => scheme.id === parseInt(id))
-      setScheme(schemeData)
-      setLoading(false)
-      
-      // Initialize vote count (mock data)
-      if (schemeData) {
-        setVoteCount({
-          upvotes: Math.floor(Math.random() * 1000) + 500,
-          downvotes: Math.floor(Math.random() * 200) + 50
-        })
-      }
-    }, 1000)
-  }, [id])
-
+  // Initialize vote count from scheme data
+  const [voteCount, setVoteCount] = useState({ upvotes: 0, downvotes: 0 })
+  
+  React.useEffect(() => {
+    if (scheme) {
+      setVoteCount({
+        upvotes: scheme.upvotes || 0,
+        downvotes: scheme.downvotes || 0
+      })
+    }
+  }, [scheme])
+  
   const handleVote = (voteValue) => {
     // In a real app, this would call an API to record the vote
     // For now, we'll just update the UI
@@ -169,10 +70,25 @@ const SchemeDetail = () => {
     alert(`Infographic for ${scheme.title} would be generated and downloaded!`)
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="text-red-500 font-bold mb-2">{t('error_loading_data')}</div>
+        <p className="text-red-700 mb-4">{t('failed_to_load_scheme_data')}</p>
+        <button 
+          onClick={() => refetch()} 
+          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+        >
+          {t('retry')}
+        </button>
       </div>
     )
   }
