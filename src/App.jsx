@@ -11,6 +11,7 @@ import NewComplaint from './pages/NewComplaint'
 import Schemes from './pages/Schemes'
 import SchemeDetail from './pages/SchemeDetail'
 import Discussions from './pages/Discussions'
+import DiscussionDetail from './pages/DiscussionDetail'
 import Chat from './pages/Chat'
 import Documents from './pages/Documents'
 import Regions from './pages/Regions'
@@ -98,6 +99,7 @@ function AppContent() {
               <Route path="/schemes" element={<Schemes />} />
               <Route path="/schemes/:id" element={<SchemeDetail />} />
               <Route path="/discussions" element={<Discussions />} />
+              <Route path="/discussions/:id" element={<DiscussionDetail />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/regions" element={<Regions />} />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import * as discussionsApi from '../services/api/discussions'
@@ -7,6 +7,8 @@ import * as discussionsApi from '../services/api/discussions'
 const Discussions = () => {
   const { t } = useLanguage()
   const [filter, setFilter] = useState('all')
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ title: '', content: '', category: 'General', tags: '' })
 
   const { data: discussionsData, isLoading, isError } = useQuery({
     queryKey: ['discussions'],
@@ -15,6 +17,31 @@ const Discussions = () => {
   })
 
   const discussions = discussionsData || []
+
+  const createMutation = useMutation({
+    mutationFn: discussionsApi.createDiscussion,
+    onSuccess: () => {
+      // Reset and hide form; list will be invalidated in API helper
+      setForm({ title: '', content: '', category: 'General', tags: '' })
+      setShowForm(false)
+    },
+  })
+
+  const onSubmit = (e) => {
+    e.preventDefault()
+    const payload = {
+      title: form.title,
+      content: form.content,
+      category: form.category || 'General',
+      tags: form.tags
+        ? form.tags
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : [],
+    }
+    createMutation.mutate(payload)
+  }
 
   const filteredDiscussions = filter === 'all' 
     ? discussions 
@@ -53,10 +80,71 @@ const Discussions = () => {
           <h2 className="text-3xl font-bold text-gray-800">{t('discussions_title')}</h2>
           <p className="text-gray-600 mt-2">{t('discussions_subtitle')}</p>
         </div>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+        <button onClick={() => setShowForm((s) => !s)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
           {t('discussions_start_new')}
         </button>
       </div>
+
+      {showForm && (
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <input
+                type="text"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
+              <input
+                type="text"
+                value={form.tags}
+                onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+              <textarea
+                rows={4}
+                value={form.content}
+                onChange={(e) => setForm({ ...form, content: e.target.value })}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={createMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50"
+              >
+                {createMutation.isPending ? 'Creating…' : 'Create'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex flex-wrap gap-4 mb-6">
