@@ -34,28 +34,23 @@ const Schemes = () => {
     console.log(`Exporting infographic for scheme ${schemeId}`)
   }
 
-  const handleVerifyScheme = () => {
+  const handleVerifyScheme = async () => {
     if (!verificationText.trim()) {
       setVerificationResult({ isFake: null, message: 'Please enter a message to verify.' })
       return
     }
 
-    // Simple fake detection logic (in a real app, this would be more sophisticated)
-    const fakeKeywords = ['free money', 'click here', 'urgent', 'limited time', 'act now']
-    const isFake = fakeKeywords.some(keyword => 
-      verificationText.toLowerCase().includes(keyword)
-    )
-
-    if (isFake) {
-      setVerificationResult({ 
-        isFake: true, 
-        message: 'Warning: This message appears to be a fake scheme. Please verify with official sources before taking any action.' 
+    try {
+      const res = await schemesApi.verifyMessage({ text: verificationText })
+      // res: { risk_score, label, signals }
+      const isFake = res.label !== 'legit'
+      setVerificationResult({
+        isFake,
+        message: `${isFake ? 'Warning: Suspicious' : 'Legit'} · Risk score ${res.risk_score}`
       })
-    } else {
-      setVerificationResult({ 
-        isFake: false, 
-        message: 'This message appears to be legitimate. However, always verify with official government sources before taking any action.' 
-      })
+    } catch (e) {
+      console.error(e)
+      setVerificationResult({ isFake: null, message: 'Verification failed. Please try again.' })
     }
   }
 

@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/complaints/', include('complaints.urls')),
     path('api/chat/', include('chat.urls')),
     path('api/adminpanel/', include('adminpanel.urls')),
+    path('api/admin/', include('adminpanel.urls')),  # alias to match frontend
     path('api/documents/', include('documents.urls')),
     path('api/regions/', include('regions.urls')),
     path('api/discussions/', include('discussions.urls')),

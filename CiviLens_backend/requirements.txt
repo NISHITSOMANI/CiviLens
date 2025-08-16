@@ -5,3 +5,6 @@ certifi
 python-dotenv
 PyJWT
 django-cors-headers
+scikit-learn
+numpy
+scipy

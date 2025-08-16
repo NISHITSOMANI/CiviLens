@@ -80,3 +80,111 @@ export async function searchSchemes(filters = {}) {
     throw error
   }
 }
+
+/**
+ * Create a new scheme (admin only)
+ * POST /api/schemes/
+ */
+export async function createScheme(payload) {
+  try {
+    const response = await apiClient.post('/schemes/', payload)
+    if (response.data.success) {
+      return response.data.data
+    } else {
+      throw new Error(response.data.error?.message || 'Failed to create scheme')
+    }
+  } catch (error) {
+    console.error('Error creating scheme:', error)
+    throw error
+  }
+}
+
+/**
+ * Update a scheme (admin only)
+ * PATCH /api/schemes/:id/
+ */
+export async function updateScheme(id, payload) {
+  try {
+    const response = await apiClient.patch(`/schemes/${id}/`, payload)
+    if (response.data.success) {
+      return true
+    } else {
+      throw new Error(response.data.error?.message || 'Failed to update scheme')
+    }
+  } catch (error) {
+    console.error(`Error updating scheme ${id}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Delete a scheme (admin only)
+ * DELETE /api/schemes/:id/
+ */
+export async function deleteScheme(id) {
+  try {
+    const response = await apiClient.delete(`/schemes/${id}/`)
+    if (response.data.success) {
+      return true
+    } else {
+      throw new Error(response.data.error?.message || 'Failed to delete scheme')
+    }
+  } catch (error) {
+    console.error(`Error deleting scheme ${id}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Run verification scorer for a scheme
+ * POST /api/schemes/:id/verify/
+ */
+export async function verifyScheme(id) {
+  try {
+    const response = await apiClient.post(`/schemes/${id}/verify/`)
+    if (response.data.success) {
+      return response.data.data // { risk_score, label, signals, ... }
+    } else {
+      throw new Error(response.data.error?.message || 'Failed to verify scheme')
+    }
+  } catch (error) {
+    console.error(`Error verifying scheme ${id}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Verify arbitrary message text using same rules+ML as scheme verify
+ * POST /api/schemes/verify_message/
+ */
+export async function verifyMessage({ text, source_url = '' }) {
+  try {
+    const response = await apiClient.post('/schemes/verify_message/', { text, source_url })
+    if (response.data.success) {
+      return response.data.data // { risk_score, label, signals, ... }
+    } else {
+      throw new Error(response.data.error?.message || 'Failed to verify message')
+    }
+  } catch (error) {
+    console.error('Error verifying message:', error)
+    throw error
+  }
+}
+
+/**
+ * Admin: override verification label
+ * POST /api/schemes/:id/verify/mark/
+ */
+export async function markSchemeVerification(id, label) {
+  try {
+    const response = await apiClient.post(`/schemes/${id}/verify/mark/`, { label })
+    if (response.data.success) {
+      return true
+    } else {
+      throw new Error(response.data.error?.message || 'Failed to mark verification')
+    }
+  } catch (error) {
+    console.error(`Error marking verification for ${id}:`, error)
+    throw error
+  }
+}
