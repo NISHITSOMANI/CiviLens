@@ -7,7 +7,6 @@ import { QueryClient } from '@tanstack/react-query'
 import * as documentsApi from './api/documents'
 import * as complaintsApi from './api/complaints'
 import * as discussionsApi from './api/discussions'
-import * as chatApi from './api/chat'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,6 +21,5 @@ const queryClient = new QueryClient({
 documentsApi.setQueryClient(queryClient)
 complaintsApi.setQueryClient(queryClient)
 discussionsApi.setQueryClient(queryClient)
-chatApi.setQueryClient(queryClient)
 
 export default queryClient

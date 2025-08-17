@@ -4,6 +4,7 @@
 // - Endpoints used: /api/auth/register/, /api/auth/login/, /api/auth/refresh/, /api/auth/logout/, /api/auth/profile/
 
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import * as authApi from '../services/api/auth'
 import { setAccessToken } from '../services/apiClient'
 
@@ -22,6 +23,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const initRef = useRef(false)
   const refreshingRef = useRef(false)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -113,6 +115,8 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('refreshToken', response.data.refresh)
         localStorage.setItem('user', JSON.stringify(response.data.user))
         setUser(response.data.user)
+        // Clear any stale chat caches from previous sessions
+        queryClient.removeQueries({ queryKey: ['chatMessages'] })
       }
       return response
     } catch (error) {
@@ -135,6 +139,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('refreshToken')
       localStorage.removeItem('user')
       setUser(null)
+      // Remove all chat-related caches to avoid cross-account leakage
+      queryClient.removeQueries({ queryKey: ['chatMessages'] })
+      // Optionally clear everything user-specific if needed
+      // queryClient.clear()
     }
   }
 

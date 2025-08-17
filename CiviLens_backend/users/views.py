@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from core.jwt_utils import create_access_token, create_refresh_token, decode_token
 from db_connection import db
+from pymongo import errors as pymongo_errors
 
 # Helper function to hash passwords
 def hash_password(password):
@@ -23,7 +24,11 @@ def create_user(username, email, password, role='user', region=None):
     users_collection = db['users']
     
     # Check if user already exists
-    existing_user = users_collection.find_one({'$or': [{'username': username}, {'email': email}]})
+    try:
+        existing_user = users_collection.find_one({'$or': [{'username': username}, {'email': email}]})
+    except pymongo_errors.PyMongoError as e:
+        # Bubble up to view for a clean 503 response
+        raise
     print(f"Existing user check result: {existing_user}")
     if existing_user is not None:
         print("User already exists")
@@ -41,7 +46,10 @@ def create_user(username, email, password, role='user', region=None):
     }
     
     print(f"Inserting user document: {user_doc}")
-    result = users_collection.insert_one(user_doc)
+    try:
+        result = users_collection.insert_one(user_doc)
+    except pymongo_errors.PyMongoError as e:
+        raise
     user_doc['_id'] = str(result.inserted_id)
     print(f"User created successfully with ID: {user_doc['_id']}")
     return user_doc
@@ -49,7 +57,11 @@ def create_user(username, email, password, role='user', region=None):
 # Helper function to get user by email
 def get_user_by_email(email):
     users_collection = db['users']
-    return users_collection.find_one({'email': email})
+    try:
+        return users_collection.find_one({'email': email})
+    except pymongo_errors.PyMongoError as e:
+        # Propagate to caller to decide proper HTTP status
+        raise
 
 # Helper function to authenticate user
 def authenticate_user(email, password):
@@ -116,6 +128,12 @@ class RegisterView(View):
                 'data': {'access': access, 'refresh': refresh}
             })
 
+        except pymongo_errors.PyMongoError as e:
+            # Database unreachable / network error
+            return JsonResponse({
+                'success': False,
+                'error': {'message': 'Database unavailable. Please try again later.'}
+            }, status=503)
         except Exception as e:
             import traceback
             print(f"Registration error: {str(e)}")
@@ -177,6 +195,11 @@ class LoginView(View):
                 {'success': False, 'error': {'message': 'Invalid JSON'}}, 
                 status=400
             )
+        except pymongo_errors.PyMongoError:
+            return JsonResponse(
+                {'success': False, 'error': {'message': 'Database unavailable. Please try again later.'}},
+                status=503
+            )
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -196,7 +219,10 @@ class ProfileView(View):
         # Convert string user_id back to ObjectId for MongoDB query
         from bson import ObjectId
         users_collection = db['users']
-        user = users_collection.find_one({'_id': ObjectId(user_data['_id'])})
+        try:
+            user = users_collection.find_one({'_id': ObjectId(user_data['_id'])})
+        except pymongo_errors.PyMongoError:
+            return JsonResponse({'success': False, 'error': {'message': 'Database unavailable. Please try again later.'}}, status=503)
         if not user:
             return JsonResponse({'success': False, 'error': {'message':'User not found'}}, status=404)
             
@@ -228,7 +254,10 @@ class RefreshTokenView(View):
             # Get user from database
             from bson import ObjectId
             users_collection = db['users']
-            user = users_collection.find_one({'_id': ObjectId(payload['user_id'])})
+            try:
+                user = users_collection.find_one({'_id': ObjectId(payload['user_id'])})
+            except pymongo_errors.PyMongoError:
+                return JsonResponse({'success': False, 'error': {'message': 'Database unavailable. Please try again later.'}}, status=503)
             
             if not user:
                 return JsonResponse({'success': False, 'error': {'message': 'User not found'}}, status=404)
@@ -259,6 +288,8 @@ class RefreshTokenView(View):
                 }
             })
             
+        except pymongo_errors.PyMongoError:
+            return JsonResponse({'success': False, 'error': {'message': 'Database unavailable. Please try again later.'}}, status=503)
         except Exception as e:
             return JsonResponse({'success': False, 'error': {'message': str(e)}}, status=400)
 
