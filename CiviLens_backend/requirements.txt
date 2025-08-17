@@ -9,3 +9,6 @@ scikit-learn
 numpy
 scipy
 openai>=1.0.0
+
+# NLP model for embeddings-based sentiment
+sentence-transformers>=2.2.0
