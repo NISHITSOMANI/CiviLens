@@ -1,17 +1,21 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useAuth } from '../contexts/AuthContext'
 import * as documentsApi from '../services/api/documents'
+import apiClient from '../services/apiClient'
 
 const Documents = () => {
   const { t } = useLanguage()
+  const { user } = useAuth()
   const [selectedFile, setSelectedFile] = useState(null)
   const queryClient = useQueryClient()
 
   const { data: documentsData, isLoading, isError } = useQuery({
-    queryKey: ['documents'],
+    queryKey: ['documents', user?.id],
     queryFn: documentsApi.listDocuments,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: !!user,
   })
 
   const documents = documentsData || []
@@ -19,8 +23,15 @@ const Documents = () => {
   const uploadMutation = useMutation({
     mutationFn: documentsApi.uploadDocument,
     onSuccess: () => {
-      // Invalidate and refetch documents
-      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      // Invalidate and refetch documents for this user
+      queryClient.invalidateQueries({ queryKey: ['documents', user?.id] })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: documentsApi.deleteDocument,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents', user?.id] })
     },
   })
 
@@ -33,6 +44,51 @@ const Documents = () => {
     if (!selectedFile) return
 
     uploadMutation.mutate(selectedFile)
+  }
+
+  const handleView = async (doc) => {
+    try {
+      const response = await apiClient.get(`/documents/${doc.id}/`, {
+        responseType: 'blob',
+      })
+      const contentType = response.headers['content-type'] || 'application/octet-stream'
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data], { type: contentType }))
+      window.open(blobUrl, '_blank', 'noopener,noreferrer')
+      // Optional: revoke later
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+    } catch (err) {
+      console.error('View document failed', err)
+      alert('Failed to open document.')
+    }
+  }
+
+  const handleDownload = async (doc) => {
+    try {
+      const response = await apiClient.get(`/documents/${doc.id}/download/`, {
+        responseType: 'blob',
+      })
+      const contentType = response.headers['content-type'] || 'application/octet-stream'
+      const href = window.URL.createObjectURL(new Blob([response.data], { type: contentType }))
+      // Try to extract filename from Content-Disposition
+      const cd = response.headers['content-disposition'] || ''
+      const match = cd.match(/filename="?([^";]+)"?/i)
+      const filename = match ? match[1] : (doc.name || 'document')
+      const a = document.createElement('a')
+      a.href = href
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(href), 60_000)
+    } catch (err) {
+      console.error('Download document failed', err)
+      alert('Failed to download document.')
+    }
+  }
+
+  const handleDelete = (doc) => {
+    if (!confirm('Delete this document?')) return
+    deleteMutation.mutate(doc.id)
   }
 
   const getFileIcon = (type) => {
@@ -141,13 +197,13 @@ const Documents = () => {
                       </div>
                     </div>
                     <div className="mt-3 flex gap-2">
-                      <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                      <button onClick={() => handleView(doc)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
                         {t('documents_view')}
                       </button>
-                      <button className="text-gray-600 hover:text-gray-800 text-sm font-medium">
+                      <button onClick={() => handleDownload(doc)} className="text-gray-600 hover:text-gray-800 text-sm font-medium">
                         {t('documents_download')}
                       </button>
-                      <button className="text-red-600 hover:text-red-800 text-sm font-medium">
+                      <button onClick={() => handleDelete(doc)} className="text-red-600 hover:text-red-800 text-sm font-medium">
                         {t('documents_delete')}
                       </button>
                     </div>

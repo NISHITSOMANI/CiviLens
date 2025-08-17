@@ -117,6 +117,8 @@ export const AuthProvider = ({ children }) => {
         setUser(response.data.user)
         // Clear any stale chat caches from previous sessions
         queryClient.removeQueries({ queryKey: ['chatMessages'] })
+        // Clear any stale documents caches from previous sessions
+        queryClient.removeQueries({ queryKey: ['documents'] })
       }
       return response
     } catch (error) {
@@ -141,6 +143,8 @@ export const AuthProvider = ({ children }) => {
       setUser(null)
       // Remove all chat-related caches to avoid cross-account leakage
       queryClient.removeQueries({ queryKey: ['chatMessages'] })
+      // Remove documents caches as well
+      queryClient.removeQueries({ queryKey: ['documents'] })
       // Optionally clear everything user-specific if needed
       // queryClient.clear()
     }

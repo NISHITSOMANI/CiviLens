@@ -79,3 +79,15 @@ export async function deleteDocument(id) {
     throw error
   }
 }
+
+// Build a secure view URL (inline display) for a document owned by the current user
+export function getDocumentViewUrl(id) {
+  const base = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api`
+  return `${base}/documents/${id}/`
+}
+
+// Build a secure download URL (forces attachment) for a document owned by the current user
+export function getDocumentDownloadUrl(id) {
+  const base = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api`
+  return `${base}/documents/${id}/download/`
+}
