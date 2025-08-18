@@ -14,6 +14,14 @@ import * as complaintsApi from '../services/api/complaints'
 const Home = () => {
   const { t } = useLanguage()
   const { user } = useAuth()
+  const isGovOfficial = !!user && (
+    user.role === 'official' ||
+    user.role === 'government' ||
+    user.role === 'government_official' ||
+    user.role === 'gov' ||
+    user.is_staff === true ||
+    user.role === 'admin'
+  )
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
 
@@ -188,7 +196,8 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Live Regional Heatmap Preview */}
+      {/* Live Regional Heatmap Preview (Government officials only) */}
+      {isGovOfficial && (
       <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-8">
         <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">{t('home.heatmap.title')}</h2>
         
@@ -268,6 +277,7 @@ const Home = () => {
           </Link>
         </div>
       </div>
+      )}
 
       {/* Stats Section */}
       <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl p-8 md:p-12 shadow-xl">

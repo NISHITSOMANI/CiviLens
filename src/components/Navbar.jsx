@@ -16,6 +16,15 @@ const Navbar = () => {
     }
   }
 
+  const isGovOfficial = !!user && (
+    user.role === 'official' ||
+    user.role === 'government' ||
+    user.role === 'government_official' ||
+    user.role === 'gov' ||
+    user.is_staff === true ||
+    user.role === 'admin'
+  )
+
   return (
     <nav className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg">
       <div className="container mx-auto px-4">
@@ -32,8 +41,12 @@ const Navbar = () => {
             <Link to="/discussions" className="hover:text-blue-200 transition duration-300">Discussions</Link>
             <Link to="/chat" className="hover:text-blue-200 transition duration-300">Chat</Link>
             <Link to="/documents" className="hover:text-blue-200 transition duration-300">Documents</Link>
-            <Link to="/regions" className="hover:text-blue-200 transition duration-300">Regions</Link>
-            <Link to="/sentiment" className="hover:text-blue-200 transition duration-300">Sentiment</Link>
+            {isGovOfficial && (
+              <>
+                <Link to="/regions" className="hover:text-blue-200 transition duration-300">Regions</Link>
+                <Link to="/sentiment" className="hover:text-blue-200 transition duration-300">Sentiment</Link>
+              </>
+            )}
           </div>
           
           <div className="flex items-center space-x-4">

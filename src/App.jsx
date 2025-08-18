@@ -20,11 +20,13 @@ import AdminPanel from './pages/AdminPanel'
 import ComplaintDetail from './pages/ComplaintDetail'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider, useToast } from './contexts/ToastContext'
+import { useAuth } from './contexts/AuthContext'
 import { LanguageProvider } from './contexts/LanguageContext'
 import * as healthApi from './services/api/health'
 // Admin-only layout and route guard
 import AdminLayout from './layouts/AdminLayout'
 import AdminRoute from './components/AdminRoute'
+import GovernmentRoute from './components/GovernmentRoute'
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminSchemes from './pages/admin/Schemes'
 import AdminAnalytics from './pages/admin/Analytics'
@@ -47,6 +49,8 @@ function AppContent() {
   const { addToast } = useToast()
   const location = useLocation()
   const isAdminPath = location.pathname.startsWith('/admin')
+  const { user } = useAuth()
+  const isAdmin = !!user && (user.is_staff === true || user.role === 'admin')
 
   useEffect(() => {
     // Perform health check on app boot
@@ -89,7 +93,7 @@ function AppContent() {
           <Navbar />
           <main className="flex-grow container mx-auto px-4 py-8">
             <Routes>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={isAdmin ? <Navigate to="/admin" replace /> : <Home />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/login" element={<Login />} />
               <Route path="/profile" element={<Profile />} />
@@ -102,8 +106,8 @@ function AppContent() {
               <Route path="/discussions/:id" element={<DiscussionDetail />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/documents" element={<Documents />} />
-              <Route path="/regions" element={<Regions />} />
-              <Route path="/sentiment" element={<Sentiment />} />
+              <Route path="/regions" element={<GovernmentRoute><Regions /></GovernmentRoute>} />
+              <Route path="/sentiment" element={<GovernmentRoute><Sentiment /></GovernmentRoute>} />
               {/* Legacy admin panel route (optional): redirect to new admin */}
               <Route path="/admin" element={<Navigate to="/admin" replace />} />
             </Routes>

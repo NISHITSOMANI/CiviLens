@@ -40,9 +40,20 @@ const Login = () => {
       console.log('Login result:', result)
       
       if (result && result.success) {
-        console.log('Login successful, redirecting to home')
+        console.log('Login successful')
         showToast('Login successful! Welcome back.', 'success')
-        navigate('/')
+        // Determine redirect based on admin role
+        const loggedInUser = result?.data?.user || (() => {
+          try { return JSON.parse(localStorage.getItem('user')) } catch { return null }
+        })()
+        const isAdmin = !!loggedInUser && (loggedInUser.is_staff === true || loggedInUser.role === 'admin')
+        if (isAdmin) {
+          console.log('Detected admin user, redirecting to /admin')
+          navigate('/admin', { replace: true })
+        } else {
+          console.log('Non-admin user, redirecting to /')
+          navigate('/', { replace: true })
+        }
       } else {
         const errorMsg = result?.error?.message || 'Login failed'
         console.log('Login failed:', errorMsg)
