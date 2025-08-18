@@ -21,6 +21,32 @@ const AdminPanel = () => {
     }
   })
 
+  // Analytics queries
+  const { data: heatmap = [] } = useQuery({
+    queryKey: ['admin', 'analytics', 'heatmap'],
+    queryFn: adminApi.getHeatmap,
+    staleTime: 1000 * 60 * 5,
+    onError: (error) => console.error('Error fetching heatmap:', error)
+  })
+  const { data: sentiment = [] } = useQuery({
+    queryKey: ['admin', 'analytics', 'sentiment'],
+    queryFn: adminApi.getSentimentTrends,
+    staleTime: 1000 * 60 * 5,
+    onError: (error) => console.error('Error fetching sentiment trends:', error)
+  })
+  const { data: risky = [] } = useQuery({
+    queryKey: ['admin', 'analytics', 'risky-schemes'],
+    queryFn: adminApi.getRiskySchemes,
+    staleTime: 1000 * 60 * 5,
+    onError: (error) => console.error('Error fetching risky schemes:', error)
+  })
+  const { data: successPred = [] } = useQuery({
+    queryKey: ['admin', 'analytics', 'success-predictions'],
+    queryFn: adminApi.getSuccessPredictions,
+    staleTime: 1000 * 60 * 5,
+    onError: (error) => console.error('Error fetching success predictions:', error)
+  })
+
   // Fetch admin stats using React Query
   const { data: stats = {} } = useQuery({
     queryKey: ['admin', 'stats'],
@@ -299,6 +325,116 @@ const AdminPanel = () => {
               <p className="text-sm text-gray-600">{t('adminPanel.stats.admins')}</p>
               <p className="text-2xl font-bold">{stats.admins || users.filter(u => u.role === 'admin').length}</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Heatmap (Top States by Active Complaints) */}
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Top States by Complaints</h3>
+          </div>
+          <div className="space-y-3">
+            {(heatmap.slice(0, 8) || []).map((row) => (
+              <div key={row.name} className="">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-medium">{row.name}</span>
+                  <span className="text-gray-500">{row.complaint_count}</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full"
+                    style={{ width: `${Math.min(100, (row.complaint_count / Math.max(1, heatmap[0]?.complaint_count || 1)) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+            {heatmap.length === 0 && (
+              <div className="text-gray-500 text-sm">No data</div>
+            )}
+          </div>
+        </div>
+
+        {/* Sentiment Trends (Sparkline of net score) */}
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Sentiment (7d)</h3>
+          </div>
+          <div className="h-24">
+            {sentiment.length > 0 ? (
+              <svg viewBox="0 0 100 24" className="w-full h-full">
+                {(() => {
+                  const vals = sentiment.map(s => s.net)
+                  const min = Math.min(...vals, -1)
+                  const max = Math.max(...vals, 1)
+                  const range = Math.max(0.0001, max - min)
+                  const stepX = 100 / Math.max(1, sentiment.length - 1)
+                  const d = sentiment.map((s, i) => {
+                    const x = i * stepX
+                    const y = 24 - ((s.net - min) / range) * 24
+                    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+                  }).join(' ')
+                  return (
+                    <>
+                      <path d={d} fill="none" stroke="#2563eb" strokeWidth="1.5" />
+                      {/* zero line at net=0 */}
+                      {min < 0 && max > 0 && (
+                        <line x1="0" x2="100" y1={24 - ((0 - min) / range) * 24} y2={24 - ((0 - min) / range) * 24} stroke="#e5e7eb" strokeWidth="0.5" />
+                      )}
+                    </>
+                  )
+                })()}
+              </svg>
+            ) : (
+              <div className="text-gray-500 text-sm">No data</div>
+            )}
+          </div>
+          <div className="flex gap-4 text-xs text-gray-600 mt-2">
+            <div>Days: {sentiment.length}</div>
+          </div>
+        </div>
+
+        {/* Risky Schemes */}
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold">Risky Schemes</h3>
+          </div>
+          <div className="divide-y">
+            {(risky.slice(0, 5) || []).map(item => (
+              <div key={item.scheme_id} className="py-3 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{item.name}</div>
+                  <div className="text-xs text-gray-500">{item.region} • ac:{item.factors?.scheme_active_complaints} • pos:{(item.factors?.region_positive_ratio ?? 0).toFixed(2)}</div>
+                </div>
+                <div className="text-red-600 font-semibold">{item.risk}</div>
+              </div>
+            ))}
+            {risky.length === 0 && (
+              <div className="text-gray-500 text-sm">No data</div>
+            )}
+          </div>
+        </div>
+
+        {/* Success Predictions */}
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold">Likely Successful</h3>
+          </div>
+          <div className="divide-y">
+            {(successPred.slice(0, 5) || []).map(item => (
+              <div key={item.scheme_id} className="py-3 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{item.name}</div>
+                  <div className="text-xs text-gray-500">closure:{(item.factors?.closure_rate ?? 0).toFixed(2)} • inactive:{item.factors?.inactivity_days}d</div>
+                </div>
+                <div className="text-green-600 font-semibold">{Math.round((item.success_probability || 0) * 100)}%</div>
+              </div>
+            ))}
+            {successPred.length === 0 && (
+              <div className="text-gray-500 text-sm">No data</div>
+            )}
           </div>
         </div>
       </div>
