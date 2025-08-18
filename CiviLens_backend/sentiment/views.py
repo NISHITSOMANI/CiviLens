@@ -7,6 +7,7 @@ from collections import Counter, defaultdict
 import re
 from db_connection import db
 from .nlp_utils import analyze_sentiments, top_tfidf_keywords
+from regions.views import _normalize_region, STATES
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SentimentOverviewView(View):
@@ -184,5 +185,83 @@ class SentimentOverviewView(View):
                 'keywords': keywords,
             }
             return JsonResponse({'success': True, 'data': data})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': {'message': str(e)}}, status=400)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SentimentRegionsView(View):
+    """Return sentiment score per region/state for heatmap preview.
+    Output shape: [ { name: str, sentiment_score: int } ]
+    """
+    def get(self, request):
+        try:
+            col = db['sentiment_records']
+            # Try to use explicit sentiment records first (recent window)
+            now = datetime.utcnow()
+            start_30 = now - timedelta(days=30)
+
+            # Pull limited rows for performance
+            rows = list(col.find({}, {'text': 1, 'region': 1, 'state': 1, 'location': 1, 'created_at': 1, 'sentiment': 1}).limit(8000))
+
+            # If no sentiment_records, fallback to complaints descriptions as proxy
+            if not rows:
+                complaints_col = db['complaints']
+                rows = list(complaints_col.find({}, {
+                    'description': 1,
+                    'region': 1,
+                    'state': 1,
+                    'location': 1,
+                    'created_at': 1,
+                }).limit(12000))
+
+            # Group texts by normalized region name
+            by_region_texts = defaultdict(list)
+
+            def parse_dt(v):
+                try:
+                    if isinstance(v, (int, float)):
+                        ts = float(v)
+                        if ts > 1e12:
+                            ts /= 1000.0
+                        return datetime.utcfromtimestamp(ts)
+                    return datetime.fromisoformat(str(v).replace('Z','').split('+')[0])
+                except Exception:
+                    return now
+
+            for r in rows:
+                dt = parse_dt(r.get('created_at'))
+                if dt < start_30:
+                    continue
+                # Prefer explicit region fields and normalize
+                parts = [r.get('region'), r.get('state'), r.get('location')]
+                combined = ' '.join([p for p in parts if isinstance(p, str) and p.strip()])
+                region_name = _normalize_region(combined) if combined else None
+                if not region_name:
+                    continue
+                text = r.get('text') or r.get('description') or ''
+                if text:
+                    by_region_texts[region_name].append(text)
+
+            # Run model per-region in batches to keep memory lower
+            out = []
+            for name, texts in by_region_texts.items():
+                # Keep only canonical state/UT names
+                if name not in STATES:
+                    continue
+                try:
+                    labels = analyze_sentiments(texts)
+                except Exception:
+                    labels = []
+                pos = sum(1 for lab in labels if lab == 'positive')
+                neu = sum(1 for lab in labels if lab == 'neutral')
+                neg = sum(1 for lab in labels if lab == 'negative')
+                total = pos + neu + neg
+                score = int(round((pos / total) * 100)) if total else 0
+                out.append({ 'name': name, 'sentiment_score': score })
+
+            # Sort by state name for stable UI
+            out.sort(key=lambda x: x['name'])
+            return JsonResponse({'success': True, 'data': out})
         except Exception as e:
             return JsonResponse({'success': False, 'error': {'message': str(e)}}, status=400)

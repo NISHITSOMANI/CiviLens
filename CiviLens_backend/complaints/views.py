@@ -7,6 +7,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from db_connection import db
 from django.conf import settings
+from collections import defaultdict
+from regions.views import _normalize_region, STATES
 
 @method_decorator(csrf_exempt, name='dispatch')
 
@@ -133,6 +135,45 @@ class ComplaintListCreateView(View):
             # Insert complaint
             result = complaints_collection.insert_one(complaint_doc)
             return JsonResponse({'success': True, 'data': {'id': str(result.inserted_id)}})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': {'message': str(e)}}, status=400)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ComplaintHeatmapView(View):
+    """Return complaint counts per region for heatmap preview.
+    Output shape: [ { name: str, complaint_count: int } ]
+    """
+    def get(self, request):
+        try:
+            complaints_collection = db['complaints']
+            rows = list(complaints_collection.find({}, {
+                'region': 1,
+                'location': 1,
+                'state': 1,
+                'status': 1,
+            }).limit(20000))
+
+            counts = defaultdict(int)
+            for r in rows:
+                # Treat 'closed' as resolved; count only active/open
+                status = (r.get('status') or '').lower()
+                if status == 'closed':
+                    continue
+                parts = [r.get('region'), r.get('state'), r.get('location')]
+                combined = ' '.join([p for p in parts if isinstance(p, str) and p.strip()])
+                name = _normalize_region(combined) if combined else None
+                if not name:
+                    continue
+                # Only include canonical state/UT names
+                if name not in STATES:
+                    continue
+                counts[name] += 1
+
+            out = [ { 'name': k, 'complaint_count': v } for k, v in counts.items() ]
+            # Sort by name for stability (frontend can re-order)
+            out.sort(key=lambda x: x['name'])
+            return JsonResponse({'success': True, 'data': out})
         except Exception as e:
             return JsonResponse({'success': False, 'error': {'message': str(e)}}, status=400)
 
