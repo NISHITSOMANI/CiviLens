@@ -11,8 +11,10 @@ const AdminLayout = () => {
       to={to}
       end
       className={({ isActive }) =>
-        `flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${
-          isActive ? 'bg-yellow-100 text-yellow-800' : 'text-gray-700 hover:bg-gray-100'
+        `flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300 ${
+          isActive
+            ? 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] shadow-sm'
+            : 'text-gray-700 hover:bg-[hsl(var(--muted))] hover:shadow-sm'
         }`
       }
     >
@@ -22,11 +24,11 @@ const AdminLayout = () => {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-app flex">
       {/* Sidebar */}
-      <aside className="w-72 bg-white border-r border-gray-200 p-4 hidden md:flex md:flex-col gap-2">
+      <aside className="w-72 bg-white/80 backdrop-blur border-r border-[hsl(var(--border))] p-4 hidden md:flex md:flex-col gap-2">
         <div className="px-2 py-3 mb-2">
-          <div className="text-2xl font-extrabold text-gray-900">CiviLens <span className="text-yellow-500">Admin</span></div>
+          <div className="text-2xl font-extrabold text-gray-900">CiviLens <span className="text-[hsl(var(--primary))]">Admin</span></div>
           <div className="text-xs text-gray-500 mt-1">{user?.username}</div>
         </div>
         {navItem('/admin', 'Dashboard', (
@@ -52,20 +54,20 @@ const AdminLayout = () => {
       {/* Main */}
       <div className="flex-1 flex flex-col">
         {/* Topbar */}
-        <header className="w-full bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <header className="w-full bg-white/80 backdrop-blur border-b border-[hsl(var(--border))] px-4 py-3 flex items-center justify-between">
           <div className="md:hidden">
-            <div className="text-xl font-bold">CiviLens <span className="text-yellow-500">Admin</span></div>
+            <div className="text-xl font-bold">CiviLens <span className="text-[hsl(var(--primary))]">Admin</span></div>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-sm text-gray-700">Signed in as <span className="font-medium">{user?.username}</span></div>
-            <span className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1">
+            <span className="inline-flex items-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] text-xs font-medium px-2 py-1">
               {user?.role === 'admin' || user?.is_staff ? 'Admin' : 'User'}
             </span>
           </div>
         </header>
 
         {/* Content */}
-        <main className="p-4 md:p-6 lg:p-8">
+        <main className="p-4 md:p-6 lg:p-8 animate-page-in">
           <Outlet />
         </main>
       </div>

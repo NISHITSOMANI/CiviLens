@@ -1,7 +1,6 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import LanguageSwitcher from './LanguageSwitcher'
 
 const Navbar = () => {
   const { user, logout } = useAuth()
@@ -50,7 +49,6 @@ const Navbar = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            <LanguageSwitcher />
             {user ? (
               <>
                 <Link to="/profile" className="hover:text-blue-200 transition duration-300">

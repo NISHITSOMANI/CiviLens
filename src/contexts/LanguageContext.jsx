@@ -862,69 +862,30 @@ const translations = {
   }
 }
 
-const LanguageContext = createContext()
-
-export const useLanguage = () => {
-  const context = useContext(LanguageContext)
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider')
-  }
-  return context
-}
-
-export const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState('en')
-  
-  // Load language preference from localStorage
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('language')
-    if (savedLanguage && translations[savedLanguage]) {
-      setLanguage(savedLanguage)
-    }
-  }, [])
-  
-  // Save language preference to localStorage
-  const updateLanguage = (newLanguage) => {
-    if (translations[newLanguage]) {
-      setLanguage(newLanguage)
-      localStorage.setItem('language', newLanguage)
-    }
-  }
-  
-  // Get translated text with support for nested keys
-  const t = (key) => {
-    // Handle nested keys (e.g., 'home.hero.title')
+// Default, locked-English language helpers
+const defaultLanguageHelpers = {
+  language: 'en',
+  updateLanguage: () => {},
+  t: (key) => {
     const keys = key.split('.')
-    let value = translations[language] || {}
-    let defaultValue = translations['en'] || {}
-    
-    // Traverse the nested keys
+    let value = translations['en'] || {}
     for (const k of keys) {
       value = value?.[k]
-      defaultValue = defaultValue?.[k]
-      
-      // If we hit an undefined value, break early
-      if (value === undefined && defaultValue === undefined) {
-        break
-      }
+      if (value === undefined) break
     }
-    
-    // Return the translation or fallback to English or the key itself
-    return value || defaultValue || key
-  }
-  
-  const value = {
-    language,
-    updateLanguage,
-    t,
-    languages: Object.keys(translations)
-  }
-  
-  return (
-    <LanguageContext.Provider value={value}>
-      {children}
-    </LanguageContext.Provider>
-  )
+    return value || key
+  },
+  languages: ['en']
 }
+
+const LanguageContext = createContext(defaultLanguageHelpers)
+
+export const useLanguage = () => useContext(LanguageContext)
+
+export const LanguageProvider = ({ children }) => (
+  <LanguageContext.Provider value={defaultLanguageHelpers}>
+    {children}
+  </LanguageContext.Provider>
+)
 
 export default LanguageContext

@@ -41,17 +41,19 @@ export const ToastProvider = ({ children }) => {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      <div className="fixed top-4 right-4 z-50 space-y-3">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`px-4 py-2 rounded-md shadow-lg text-white flex items-center justify-between ${getToastClass(toast.type)}`}
+            role="status"
+            aria-live="polite"
+            className={`toast-base flex items-center justify-between gap-3 animate-page-in ${getToastClass(toast.type)}`}
           >
-            <span>{toast.message}</span>
+            <span className="text-sm font-medium">{toast.message}</span>
             <button
               onClick={() => removeToast(toast.id)}
-              className="ml-4 text-white hover:text-gray-200"
-            >
+              className="ml-2 inline-flex items-center justify-center w-7 h-7 rounded-full/none text-white/90 hover:text-white transition"
+              >
               ×
             </button>
           </div>
@@ -64,13 +66,13 @@ export const ToastProvider = ({ children }) => {
 const getToastClass = (type) => {
   switch (type) {
     case 'success':
-      return 'bg-green-500'
+      return 'toast-success shadow-lg rounded-2xl px-4 py-3'
     case 'error':
-      return 'bg-red-500'
+      return 'toast-error shadow-lg rounded-2xl px-4 py-3'
     case 'warning':
-      return 'bg-yellow-500'
+      return 'toast-warning shadow-lg rounded-2xl px-4 py-3'
     case 'info':
     default:
-      return 'bg-blue-500'
+      return 'toast-info shadow-lg rounded-2xl px-4 py-3'
   }
 }

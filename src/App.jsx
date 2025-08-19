@@ -21,7 +21,6 @@ import ComplaintDetail from './pages/ComplaintDetail'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider, useToast } from './contexts/ToastContext'
 import { useAuth } from './contexts/AuthContext'
-import { LanguageProvider } from './contexts/LanguageContext'
 import * as healthApi from './services/api/health'
 // Admin-only layout and route guard
 import AdminLayout from './layouts/AdminLayout'
@@ -33,13 +32,11 @@ import AdminComplaints from './pages/admin/Complaints'
 function App() {
   return (
     <AuthProvider>
-      <LanguageProvider>
-        <ToastProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </ToastProvider>
-      </LanguageProvider>
+      <ToastProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </ToastProvider>
     </AuthProvider>
   )
 }
@@ -87,9 +84,9 @@ function AppContent() {
         </Routes>
       ) : (
         // Public Shell
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+        <div className="min-h-screen bg-app flex flex-col">
           <Navbar />
-          <main className="flex-grow container mx-auto px-4 py-8">
+          <main className="flex-grow container mx-auto px-4 py-8 animate-page-in">
             <Routes>
               <Route path="/" element={isAdmin ? <Navigate to="/admin" replace /> : <Home />} />
               <Route path="/signup" element={<Signup />} />
