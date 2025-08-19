@@ -10,3 +10,6 @@ numpy
 scipy
 openai>=1.0.0
 sentence-transformers>=2.2.0
+joblib
+pandas
+xgboost

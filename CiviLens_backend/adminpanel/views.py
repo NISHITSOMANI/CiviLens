@@ -7,6 +7,12 @@ from bson import ObjectId
 from collections import defaultdict
 from datetime import datetime, timedelta
 from regions.views import _normalize_region, STATES
+try:
+    # Optional ML inference utilities. If unavailable, views fall back to heuristics.
+    from ml.infer_schemes import predict_risk_for_schemes, predict_success_for_schemes
+except Exception:
+    predict_risk_for_schemes = None
+    predict_success_for_schemes = None
 
 @method_decorator(csrf_exempt, name='dispatch')
 
@@ -183,6 +189,25 @@ class AdminRiskySchemesView(View):
     def get(self, request):
         if not _authorize_admin(request):
             return JsonResponse({'success': False, 'error': {'message': 'Admin required'}}, status=403)
+        # Try ML model first
+        try:
+            if callable(predict_risk_for_schemes):
+                preds = predict_risk_for_schemes()
+                if preds:
+                    data = []
+                    for p in preds:
+                        data.append({
+                            'scheme_id': p.get('scheme_id'),
+                            'name': p.get('name') or 'Scheme',
+                            'region': p.get('region') or 'Unknown',
+                            'risk': int(round(p.get('risk', p.get('risk_prob', 0.0) * 100))),
+                            'factors': {}
+                        })
+                    data.sort(key=lambda x: x['risk'], reverse=True)
+                    return JsonResponse({'success': True, 'data': data})
+        except Exception:
+            # Fall through to heuristic computation
+            pass
         schemes = db['schemes']
         complaints = db['complaints']
         sentiments = db['sentiment_records']
@@ -264,6 +289,19 @@ class AdminSuccessPredictionView(View):
     def get(self, request):
         if not _authorize_admin(request):
             return JsonResponse({'success': False, 'error': {'message': 'Admin required'}}, status=403)
+        # Try ML model first
+        try:
+            if callable(predict_success_for_schemes):
+                preds = predict_success_for_schemes()
+                if preds:
+                    for p in preds:
+                        # normalize value name for API
+                        if 'success_probability' not in p and 'prob' in p:
+                            p['success_probability'] = float(p['prob'])
+                    return JsonResponse({'success': True, 'data': preds})
+        except Exception:
+            # Fall through to heuristic computation
+            pass
         schemes = db['schemes']
         complaints = db['complaints']
         now = datetime.utcnow()

@@ -1,0 +1,22 @@
+{
+  "feature_order": [
+    "age_days",
+    "inact_days",
+    "total",
+    "closed",
+    "closure_rate",
+    "avg_close_time",
+    "last30",
+    "last60",
+    "velocity",
+    "recent_closure_rate",
+    "reg_pos_ratio",
+    "reg_pos_ratio_30",
+    "reg_neg_ratio_30",
+    "geo_div"
+  ],
+  "metrics": {
+    "risk_auc": 0.9548528095387778,
+    "success_auc": 0.9501547499921761
+  }
+}
