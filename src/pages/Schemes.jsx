@@ -10,12 +10,16 @@ const Schemes = () => {
   const [verificationText, setVerificationText] = useState('')
   const [verificationResult, setVerificationResult] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const LIMIT = 8
+  const [page, setPage] = useState(1)
 
   const { data: schemesData, isLoading, isError } = useQuery({
-    queryKey: ['schemes', filter, searchQuery],
+    queryKey: ['schemes', filter, searchQuery, page, LIMIT],
     queryFn: () => schemesApi.listSchemes({
       category: filter === 'all' ? undefined : filter,
-      q: searchQuery || undefined
+      q: searchQuery || undefined,
+      limit: LIMIT,
+      offset: (page - 1) * LIMIT,
     }),
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
@@ -128,7 +132,7 @@ const Schemes = () => {
             
             <div className="space-y-2">
               <button
-                onClick={() => setFilter('all')}
+                onClick={() => { setFilter('all'); setPage(1) }}
                 className={`block w-full text-left px-4 py-2 rounded-lg ${filter === 'all' ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
               >
                 {t('schemes_category_all')}
@@ -137,7 +141,7 @@ const Schemes = () => {
               {categories.map((category, index) => (
                 <button
                   key={index}
-                  onClick={() => setFilter(category)}
+                  onClick={() => { setFilter(category); setPage(1) }}
                   className={`block w-full text-left px-4 py-2 rounded-lg ${filter === category ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
                 >
                   {category}
@@ -161,7 +165,7 @@ const Schemes = () => {
                   type="text"
                   placeholder={t('schemes_search_placeholder')}
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
                   className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <svg className="w-5 h-5 text-gray-400 absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -240,6 +244,24 @@ const Schemes = () => {
                   <p className="text-gray-600">Try adjusting your filters to see more results</p>
                 </div>
               )}
+              {/* Pagination */}
+              <div className="flex items-center justify-end gap-3 pt-4">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className={`px-3 py-1.5 rounded border ${page > 1 ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-gray-600">Page {page}</span>
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={(schemesData || []).length < LIMIT}
+                  className={`px-3 py-1.5 rounded border ${((schemesData || []).length === LIMIT) ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         </div>

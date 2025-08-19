@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../../contexts/AuthContext'
 import { getAdminComplaints, getAdminComplaintsHeatmap } from '../../services/api/admin'
 import { updateComplaint } from '../../services/api/complaints'
 
@@ -15,8 +16,10 @@ const AdminComplaints = () => {
   const [rows, setRows] = useState([])
   const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
+  const { loading: authLoading } = useAuth()
 
   const apply = async (targetPage = page) => {
+    if (authLoading) return
     setLoading(true)
     setError(null)
     try {
@@ -48,9 +51,11 @@ const AdminComplaints = () => {
   }
 
   useEffect(() => {
-    apply(1)
+    if (!authLoading) {
+      apply(1)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [authLoading])
 
   const maxCount = useMemo(() => Math.max(1, ...(hm || []).map(r => r.complaint_count || r.count || 0)), [hm])
 
