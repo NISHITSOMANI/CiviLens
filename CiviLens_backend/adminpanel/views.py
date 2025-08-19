@@ -60,6 +60,225 @@ class AdminUsersView(View):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+class AdminComplaintsListView(View):
+    """Admin list complaints with filters.
+    Query params: start_date (YYYY-MM-DD), end_date (YYYY-MM-DD), region, scheme, status (open|closed)
+    """
+    def get(self, request):
+        if not _authorize_admin(request):
+            return JsonResponse({'success': False, 'error': {'message': 'Admin required'}}, status=403)
+        complaints = db['complaints']
+        q = {}
+        # status
+        status = (request.GET.get('status') or '').lower().strip()
+        if status in ('open','closed'):
+            q['status'] = status
+        # date range on created_at (stored as epoch ms or iso)
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        if start_date or end_date:
+            num_cond = {}
+            iso_cond = {}
+            try:
+                if start_date:
+                    dt = datetime.fromisoformat(start_date)
+                    num_cond['$gte'] = int(dt.timestamp()*1000)
+                    iso_cond['$gte'] = dt.isoformat()
+                if end_date:
+                    dt2 = datetime.fromisoformat(end_date) + timedelta(days=1)
+                    num_cond['$lt'] = int(dt2.timestamp()*1000)
+                    iso_cond['$lt'] = dt2.isoformat()
+            except Exception:
+                pass
+            ors = []
+            if num_cond:
+                ors.append({'created_at': num_cond})
+                ors.append({'updated_at': num_cond})
+            if iso_cond:
+                ors.append({'date': iso_cond})
+                ors.append({'created_at': iso_cond})
+                ors.append({'updated_at': iso_cond})
+            if ors:
+                q['$and'] = (q.get('$and') or []) + [{ '$or': ors }]
+        # region/state text
+        region = request.GET.get('region')
+        if region:
+            try:
+                import re
+                q['$or'] = [
+                    {'region': {'$regex': re.escape(region), '$options': 'i'}},
+                    {'state': {'$regex': re.escape(region), '$options': 'i'}},
+                    {'location': {'$regex': re.escape(region), '$options': 'i'}},
+                ]
+            except Exception:
+                q['region'] = region
+        # scheme text id/name (best-effort)
+        scheme = request.GET.get('scheme')
+        if scheme:
+            try:
+                import re
+                q.setdefault('$or', [])
+                q['$or'] += [
+                    {'scheme': {'$regex': re.escape(scheme), '$options': 'i'}},
+                    {'scheme_name': {'$regex': re.escape(scheme), '$options': 'i'}},
+                    {'title': {'$regex': re.escape(scheme), '$options': 'i'}},
+                ]
+            except Exception:
+                q['scheme'] = scheme
+        # fetch with optional limit and default cap when no filters
+        # detect if filters are provided
+        has_filters = any([
+            bool(status in ('open','closed')),
+            bool(start_date),
+            bool(end_date),
+            bool(region),
+            bool(scheme),
+        ])
+        # parse limit
+        limit_param = request.GET.get('limit')
+        try:
+            limit_val = int(limit_param) if limit_param is not None else None
+            if limit_val is not None and limit_val <= 0:
+                limit_val = None
+        except Exception:
+            limit_val = None
+        # parse page (1-based)
+        page_param = request.GET.get('page')
+        try:
+            page_val = int(page_param) if page_param is not None else 1
+            if page_val <= 0:
+                page_val = 1
+        except Exception:
+            page_val = 1
+        # default cap if no filters and no explicit limit
+        if not has_filters and limit_val is None:
+            limit_val = 10
+
+        try:
+            cursor = complaints.find(q)
+            # best-effort sort by created_at desc (epoch or iso)
+            try:
+                cursor = cursor.sort('created_at', -1)
+            except Exception:
+                pass
+            if limit_val is not None:
+                # apply skip for pagination
+                skip_val = (page_val - 1) * limit_val
+                if skip_val > 0:
+                    try:
+                        cursor = cursor.skip(skip_val)
+                    except Exception:
+                        pass
+                cursor = cursor.limit(limit_val)
+            docs = list(cursor)
+        except Exception:
+            docs = []
+        out = []
+        for d in docs:
+            created = d.get('created_at')
+            try:
+                if isinstance(created, (int, float)):
+                    created_fmt = datetime.utcfromtimestamp(created/1000).isoformat()
+                else:
+                    created_fmt = str(created)
+            except Exception:
+                created_fmt = ''
+            out.append({
+                'id': str(d.get('_id')),
+                'title': d.get('title') or d.get('topic') or 'Complaint',
+                'scheme': d.get('scheme') or d.get('scheme_name'),
+                'region': d.get('region') or d.get('state') or d.get('location'),
+                'status': (d.get('status') or 'open').lower(),
+                'created_at': created_fmt,
+                'assignee': d.get('assignee', ''),
+            })
+        return JsonResponse({'success': True, 'data': out})
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AdminComplaintsHeatmapView(View):
+    """Admin heatmap with same filters as list; counts active by region."""
+    def get(self, request):
+        if not _authorize_admin(request):
+            return JsonResponse({'success': False, 'error': {'message': 'Admin required'}}, status=403)
+        complaints = db['complaints']
+        q = {}
+        # status filter: include all if unspecified
+        status = (request.GET.get('status') or '').lower().strip()
+        if status in ('open','closed'):
+            q['status'] = status
+        # date range
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        if start_date or end_date:
+            num_cond = {}
+            iso_cond = {}
+            try:
+                if start_date:
+                    dt = datetime.fromisoformat(start_date)
+                    num_cond['$gte'] = int(dt.timestamp()*1000)
+                    iso_cond['$gte'] = dt.isoformat()
+                if end_date:
+                    dt2 = datetime.fromisoformat(end_date) + timedelta(days=1)
+                    num_cond['$lt'] = int(dt2.timestamp()*1000)
+                    iso_cond['$lt'] = dt2.isoformat()
+            except Exception:
+                pass
+            ors = []
+            if num_cond:
+                ors.append({'created_at': num_cond})
+                ors.append({'updated_at': num_cond})
+            if iso_cond:
+                ors.append({'date': iso_cond})
+                ors.append({'updated_at': iso_cond})
+            if ors:
+                q['$and'] = (q.get('$and') or []) + [{ '$or': ors }]
+        # region filter (text contains)
+        region = request.GET.get('region')
+        if region:
+            try:
+                import re
+                q.setdefault('$or', [])
+                q['$or'] += [
+                    {'region': {'$regex': re.escape(region), '$options': 'i'}},
+                    {'state': {'$regex': re.escape(region), '$options': 'i'}},
+                    {'location': {'$regex': re.escape(region), '$options': 'i'}},
+                ]
+            except Exception:
+                q['region'] = region
+        # scheme search
+        scheme = request.GET.get('scheme')
+        if scheme:
+            try:
+                import re
+                q.setdefault('$or', [])
+                q['$or'] += [
+                    {'scheme': {'$regex': re.escape(scheme), '$options': 'i'}},
+                    {'scheme_name': {'$regex': re.escape(scheme), '$options': 'i'}},
+                    {'title': {'$regex': re.escape(scheme), '$options': 'i'}},
+                ]
+            except Exception:
+                q['scheme'] = scheme
+
+        try:
+            rows = list(complaints.find(q, {'region':1,'state':1,'location':1,'status':1}).limit(20000))
+        except Exception:
+            rows = []
+        counts = defaultdict(int)
+        for r in rows:
+            parts = [r.get('region'), r.get('state'), r.get('location')]
+            combined = ' '.join([p for p in parts if isinstance(p, str) and p.strip()])
+            if not combined:
+                continue
+            norm = _normalize_region(combined)
+            # Prefer canonical state name; else use the raw combined string title-cased
+            name = norm if (norm in STATES) else combined.strip().title()
+            counts[name] += 1
+        out = [{ 'name': k, 'complaint_count': v } for k, v in counts.items()]
+        out.sort(key=lambda x: x['complaint_count'], reverse=True)
+        return JsonResponse({'success': True, 'data': out})
+
+@method_decorator(csrf_exempt, name='dispatch')
 class AdminUserDetailView(View):
     def _authorize(self, request):
         user_data = getattr(request, 'user_data', None)

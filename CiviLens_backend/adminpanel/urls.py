@@ -7,6 +7,8 @@ from .views import (
     AdminSentimentTrendsView,
     AdminRiskySchemesView,
     AdminSuccessPredictionView,
+    AdminComplaintsListView,
+    AdminComplaintsHeatmapView,
 )
 
 urlpatterns = [
@@ -18,4 +20,7 @@ urlpatterns = [
     path('analytics/sentiment/', AdminSentimentTrendsView.as_view(), name='admin-sentiment-trends'),
     path('analytics/schemes/risk/', AdminRiskySchemesView.as_view(), name='admin-risky-schemes'),
     path('analytics/schemes/success/', AdminSuccessPredictionView.as_view(), name='admin-success-prediction'),
+    # Complaints (admin)
+    path('complaints/', AdminComplaintsListView.as_view(), name='admin-complaints-list'),
+    path('complaints/heatmap/', AdminComplaintsHeatmapView.as_view(), name='admin-complaints-heatmap'),
 ]

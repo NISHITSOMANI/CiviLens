@@ -25,6 +25,44 @@ export async function getUsers() {
 }
 
 /**
+ * Fetch admin complaints list with filters
+ * GET /api/admin/complaints/
+ */
+export async function getAdminComplaints(params) {
+  try {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : ''
+    const response = await apiClient.get(`/admin/complaints/${qs}`)
+    if (response.data.success) {
+      return response.data.data
+    } else {
+      throw new Error(response.data.error?.message || 'Failed to fetch admin complaints')
+    }
+  } catch (error) {
+    console.error('Error fetching admin complaints:', error)
+    throw error
+  }
+}
+
+/**
+ * Fetch admin complaints heatmap with filters
+ * GET /api/admin/complaints/heatmap/
+ */
+export async function getAdminComplaintsHeatmap(params) {
+  try {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : ''
+    const response = await apiClient.get(`/admin/complaints/heatmap/${qs}`)
+    if (response.data.success) {
+      return response.data.data
+    } else {
+      throw new Error(response.data.error?.message || 'Failed to fetch admin complaints heatmap')
+    }
+  } catch (error) {
+    console.error('Error fetching admin complaints heatmap:', error)
+    throw error
+  }
+}
+
+/**
  * Update user status (activate/deactivate)
  * PATCH /api/admin/users/{id}/
  */

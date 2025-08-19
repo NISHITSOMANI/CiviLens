@@ -40,9 +40,10 @@ export async function createComplaint(complaintData) {
  * Fetch list of complaints
  * GET /api/complaints/
  */
-export async function listComplaints() {
+export async function listComplaints(params) {
   try {
-    const response = await apiClient.get('/complaints/')
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : ''
+    const response = await apiClient.get(`/complaints/${qs}`)
     // Return data directly if success, otherwise throw error
     if (response.data.success) {
       return response.data.data
@@ -124,9 +125,10 @@ export async function upvoteComplaint(id) {
  * Fetch complaint heatmap data
  * GET /api/complaints/heatmap/
  */
-export async function heatmap() {
+export async function heatmap(params) {
   try {
-    const response = await apiClient.get('/complaints/heatmap/')
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : ''
+    const response = await apiClient.get(`/complaints/heatmap/${qs}`)
     // Return data directly if success, otherwise throw error
     if (response.data.success) {
       return response.data.data

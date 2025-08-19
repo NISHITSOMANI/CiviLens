@@ -177,6 +177,7 @@ class ComplaintHeatmapView(View):
         except Exception as e:
             return JsonResponse({'success': False, 'error': {'message': str(e)}}, status=400)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ComplaintDetailView(View):
     def get(self, request, pk):
         try:
@@ -230,6 +231,54 @@ class ComplaintDetailView(View):
                 'status': complaint.get('status', 'pending'),
                 'already_upvoted': already_upvoted,
                 'document_url': doc_url,
+            }
+            return JsonResponse({'success': True, 'data': data})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': {'message': str(e)}}, status=400)
+
+    def patch(self, request, pk):
+        try:
+            # Admin/staff only
+            user_data = getattr(request, 'user_data', None)
+            is_staff = bool(user_data.get('is_staff')) if user_data else False
+            role = (user_data or {}).get('role')
+            if not user_data or not (is_staff or role == 'admin'):
+                return JsonResponse({'success': False, 'error': {'message': 'Admin required'}}, status=403)
+
+            from bson import ObjectId
+            import json as _json
+            payload = {}
+            try:
+                payload = _json.loads(request.body or '{}')
+            except Exception:
+                payload = {}
+
+            updates = {}
+            if 'status' in payload:
+                val = str(payload.get('status') or '').lower()
+                if val in ('open','closed'):
+                    updates['status'] = val
+            if 'assignee' in payload:
+                updates['assignee'] = str(payload.get('assignee') or '')
+            if not updates:
+                return JsonResponse({'success': False, 'error': {'message': 'No valid fields to update'}}, status=400)
+
+            complaints = db['complaints']
+            # id query support both ObjectId and string id
+            try:
+                oid = ObjectId(pk)
+                id_query = {'_id': oid}
+            except Exception:
+                id_query = {'_id': pk}
+
+            res = complaints.update_one(id_query, {'$set': updates})
+            if res.matched_count == 0:
+                return JsonResponse({'success': False, 'error': {'message': 'Not found'}}, status=404)
+            doc = complaints.find_one(id_query)
+            data = {
+                'id': str(doc.get('_id')),
+                'status': doc.get('status', 'open'),
+                'assignee': doc.get('assignee', ''),
             }
             return JsonResponse({'success': True, 'data': data})
         except Exception as e:
