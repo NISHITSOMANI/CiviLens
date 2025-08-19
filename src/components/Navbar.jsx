@@ -25,25 +25,25 @@ const Navbar = () => {
   )
 
   return (
-    <nav className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg">
+    <nav className="bg-slate-900 text-white shadow-lg border-b border-white/10">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-2">
-            <div className="bg-white text-blue-600 font-bold text-xl p-2 rounded">CL</div>
-            <Link to="/" className="text-xl font-bold">CiviLens</Link>
+            <div className="bg-white text-slate-900 font-bold text-xl p-2 rounded shadow-sm">CL</div>
+            <Link to="/" className="text-xl font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded px-1">CiviLens</Link>
           </div>
           
-          <div className="hidden md:flex space-x-6">
-            <Link to="/" className="hover:text-blue-200 transition duration-300">Home</Link>
-            <Link to="/complaints" className="hover:text-blue-200 transition duration-300">Complaints</Link>
-            <Link to="/schemes" className="hover:text-blue-200 transition duration-300">Schemes</Link>
-            <Link to="/discussions" className="hover:text-blue-200 transition duration-300">Discussions</Link>
-            <Link to="/chat" className="hover:text-blue-200 transition duration-300">Chat</Link>
-            <Link to="/documents" className="hover:text-blue-200 transition duration-300">Documents</Link>
+          <div className="hidden md:flex items-center gap-6">
+            <NavLink to="/">Home</NavLink>
+            <NavLink to="/complaints">Complaints</NavLink>
+            <NavLink to="/schemes">Schemes</NavLink>
+            <NavLink to="/discussions">Discussions</NavLink>
+            <NavLink to="/chat">Chat</NavLink>
+            <NavLink to="/documents">Documents</NavLink>
             {isGovOfficial && (
               <>
-                <Link to="/regions" className="hover:text-blue-200 transition duration-300">Regions</Link>
-                <Link to="/sentiment" className="hover:text-blue-200 transition duration-300">Sentiment</Link>
+                <NavLink to="/regions">Regions</NavLink>
+                <NavLink to="/sentiment">Sentiment</NavLink>
               </>
             )}
           </div>
@@ -51,25 +51,25 @@ const Navbar = () => {
           <div className="flex items-center space-x-4">
             {user ? (
               <>
-                <Link to="/profile" className="hover:text-blue-200 transition duration-300">
+                <Link to="/profile" className="hover:text-white/90 transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 rounded px-2 py-1">
                   <span className="hidden md:inline">{user.username}</span>
                 </Link>
                 {user.role === 'admin' && (
-                  <Link to="/admin" className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm transition duration-300">
+                  <Link to="/admin" className="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-full text-sm transition duration-300 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
                     Admin
                   </Link>
                 )}
                 <button 
                   onClick={handleLogout}
-                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition duration-300"
+                  className="bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded-full text-sm transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   Logout
                 </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="hover:text-blue-200 transition duration-300">Login</Link>
-                <Link to="/signup" className="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-md font-medium transition duration-300">Sign Up</Link>
+                <Link to="/login" className="hover:text-white/90 transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded px-2 py-1">Login</Link>
+                <Link to="/signup" className="bg-white text-slate-900 hover:bg-white/90 px-4 py-2 rounded-full font-medium transition duration-300 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">Sign Up</Link>
               </>
             )}
           </div>
@@ -78,5 +78,17 @@ const Navbar = () => {
     </nav>
   )
 }
+
+// Simple link with animated underline and focus ring
+const NavLink = ({ to, children }) => (
+  <Link
+    to={to}
+    className="relative focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded px-1"
+  >
+    <span className="after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-0 after:bg-white/60 after:transition-all after:duration-300 hover:after:w-full">
+      {children}
+    </span>
+  </Link>
+)
 
 export default Navbar

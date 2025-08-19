@@ -1,12 +1,44 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
-import { useLanguage } from '../contexts/LanguageContext'
 import * as chatApi from '../services/api/chat'
+
+// Inline custom SVG emoji set (solid fills, minimal gradients)
+const Emoji = {
+  Spark: (props) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path fill="currentColor" d="M12 2l1.6 4.3L18 8l-4.4 1.7L12 14l-1.6-4.3L6 8l4.4-1.7L12 2z"/>
+    </svg>
+  ),
+  Heartbeat: (props) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path fill="currentColor" d="M12 21s-6.5-3.7-9-7.2C1 10.8 2.9 7 6.6 7c2 0 3.1 1 3.9 2 .8-1 1.9-2 3.9-2 3.7 0 5.6 3.8 3.6 6.8-2.5 3.5-9 7.2-9 7.2z"/>
+    </svg>
+  ),
+  Lightbulb: (props) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path fill="currentColor" d="M12 2a7 7 0 00-4 12.8V18a2 2 0 002 2h4a2 2 0 002-2v-3.2A7 7 0 0012 2z"/>
+    </svg>
+  ),
+  Shield: (props) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path fill="currentColor" d="M12 2l7 3v6c0 5-3.1 8.7-7 11-3.9-2.3-7-6-7-11V5l7-3z"/>
+    </svg>
+  ),
+  Rocket: (props) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path fill="currentColor" d="M12 2c3 1 6 5 6 8 0 2-1 4-2 5l-5 5-2-2 2-5c-1-1-3-2-5-2-3 0-7 3-8 6 1-5 6-12 14-15z"/>
+    </svg>
+  ),
+  Leaf: (props) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path fill="currentColor" d="M21 3c-8 1-14 7-15 15 8-1 14-7 15-15zM6 18c2-4 6-8 10-10-4 4-6 8-10 10z"/>
+    </svg>
+  ),
+}
 
 const Chat = () => {
   const { user, loading: authLoading } = useAuth()
-  const { t } = useLanguage()
   const [newMessage, setNewMessage] = useState('')
   const [persistEnabled, setPersistEnabled] = useState(
     (import.meta.env.VITE_CHAT_PERSIST === '1') || false
@@ -15,13 +47,12 @@ const Chat = () => {
   const queryClient = useQueryClient()
   const userKey = user?._id || user?.id || user?.username || 'anon'
   const quickQuestions = [
-    { label: '🎓 Education', full: 'What education schemes are available for students?' },
-    { label: '💍 Marriage', full: 'Are there any government schemes for marriage assistance?' },
-    { label: '👴 Seniors', full: 'What pension schemes exist for senior citizens?' },
-    { label: '🏥 Health', full: 'Tell me about government healthcare insurance schemes.' },
-    { label: '🌾 Agriculture', full: 'What agriculture subsidy schemes are available for farmers?' },
-    { label: '🚀 Startup', full: 'What startup or entrepreneurship schemes can I apply for?' },
-    { label: '👩 Women', full: 'What women empowerment schemes are available?' },
+    { Icon: Emoji.Lightbulb, label: 'Education', full: 'What education schemes are available for students?' },
+    { Icon: Emoji.Heartbeat, label: 'Healthcare', full: 'Tell me about government healthcare insurance schemes.' },
+    { Icon: Emoji.Leaf, label: 'Agriculture', full: 'What agriculture subsidy schemes are available for farmers?' },
+    { Icon: Emoji.Rocket, label: 'Startup', full: 'What startup or entrepreneurship schemes can I apply for?' },
+    { Icon: Emoji.Shield, label: 'Pension', full: 'What pension schemes exist for senior citizens?' },
+    { Icon: Emoji.Spark, label: 'Women', full: 'What women empowerment schemes are available?' },
   ]
 
   const handleQuickAsk = (text) => {
@@ -170,8 +201,8 @@ const Chat = () => {
   if (authLoading || isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-gray-600">{t('loading')}</span>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <span className="ml-3 text-gray-600">Loading…</span>
       </div>
     )
   }
@@ -179,42 +210,42 @@ const Chat = () => {
   if (isError) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-        <p className="text-red-700 font-medium">{t('error_loading_chat')}</p>
-        <p className="text-red-600 text-sm mt-1">{error?.message || t('try_again_later')}</p>
+        <p className="text-red-700 font-medium">Unable to load chat</p>
+        <p className="text-red-600 text-sm mt-1">{error?.message || 'Please try again later.'}</p>
         <button 
           onClick={() => queryClient.invalidateQueries({ queryKey: ['chatMessages', userKey] })}
           className="mt-3 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
         >
-          {t('retry')}
+          Retry
         </button>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8">
       <div>
-        <h2 className="text-3xl font-bold text-gray-800">{t('chat_title')}</h2>
-        <p className="text-gray-600 mt-2">{t('chat_subtitle')}</p>
+        <h2 className="text-3xl font-bold text-gray-800">CiviLens Assistant</h2>
+        <p className="text-gray-600 mt-2">Ask anything about schemes, complaints, and services. I’ll guide you.</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md flex flex-col h-[calc(100vh-200px)]">
+      <div className="rounded-2xl shadow-md flex flex-col h-[calc(100vh-200px)] bg-white">
         {/* Chat Header */}
-        <div className="border-b border-gray-200 p-3">
+        <div className="border-b border-slate-200 p-4 bg-white rounded-t-2xl">
           <div className="flex items-center">
             <div className="relative">
-              <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl w-12 h-12 border border-blue-200" />
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+              <div className="bg-slate-100 rounded-xl w-12 h-12 border border-slate-200 shadow" />
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>
             </div>
             <div className="ml-3">
-              <h3 className="font-bold text-gray-800">{t('chat_admin_support')}</h3>
-              <p className="text-sm text-green-600">{t('chat_online')}</p>
+              <h3 className="font-bold text-gray-800">Assistant Online</h3>
+              <p className="text-xs text-emerald-700">Synced</p>
             </div>
           </div>
         </div>
 
         {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-gradient-to-b from-white to-blue-50/30">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-white">
           {(messages || []).map((m, idx) => {
             const isOwn = typeof m.isOwn === 'boolean' ? m.isOwn : (m.role === 'user')
             const sender = m.sender || (isOwn ? (user?.username || 'You') : 'CiviLens AI')
@@ -226,11 +257,11 @@ const Chat = () => {
               >
                 <div className={`max-w-2xl w-full md:w-auto ${isOwn ? 'pl-10' : 'pr-10'}`}>
                   <div
-                    className={`rounded-2xl px-4 py-3 shadow-sm ${isOwn ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none'}`}
+                    className={`rounded-2xl px-4 py-3 shadow-sm ${isOwn ? 'bg-purple-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-gray-800 rounded-bl-none'}`}
                   >
                     {!isOwn && (
                       <div className="flex items-center gap-2 mb-1">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 border border-blue-200" />
+                        <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200" />
                         <span className="font-semibold text-sm">{sender}</span>
                       </div>
                     )}
@@ -241,9 +272,27 @@ const Chat = () => {
                         renderContent(m.content)
                       )}
                     </div>
-                    <p className={`text-xs mt-2 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+                    <p className={`text-xs mt-2 ${isOwn ? 'text-purple-100' : 'text-gray-500'}`}>
                       {formatTime(ts)}
                     </p>
+
+                    {/* Reaction row for bot messages */}
+                    {!isOwn && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <button className="group inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-xs hover:bg-slate-50 transition">
+                          <Emoji.Spark className="w-3.5 h-3.5 text-amber-500"/>
+                          <span>Helpful</span>
+                        </button>
+                        <button className="group inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-xs hover:bg-slate-50 transition">
+                          <Emoji.Shield className="w-3.5 h-3.5 text-emerald-600"/>
+                          <span>Accurate</span>
+                        </button>
+                        <button className="group inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-xs hover:bg-slate-50 transition">
+                          <Emoji.Heartbeat className="w-3.5 h-3.5 text-rose-500"/>
+                          <span>Nice</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -251,8 +300,12 @@ const Chat = () => {
           })}
           {sendMessageMutation.isPending && (
             <div className="flex justify-start">
-              <div className="max-w-2xl bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-bl-none px-4 py-3 animate-pulse shadow-sm">
-                <p className="leading-7">Typing…</p>
+              <div className="max-w-2xl bg-white border border-slate-200 text-gray-800 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm">
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:0ms]"></span>
+                  <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:120ms]"></span>
+                  <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:240ms]"></span>
+                </div>
               </div>
             </div>
           )}
@@ -260,20 +313,21 @@ const Chat = () => {
         </div>
 
         {/* Suggestions + Message Input */}
-        <div className="border-t border-gray-100 p-3 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 rounded-b-2xl space-y-2">
+        <div className="border-t border-slate-200 p-4 bg-white rounded-b-2xl space-y-2">
           {/* Quick Questions now just above input */}
           <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap no-scrollbar">
-            <span className="text-xs text-gray-500 shrink-0">Ask about:</span>
+            <span className="text-xs text-gray-500 shrink-0">Quick ask:</span>
             {quickQuestions.map((q, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => handleQuickAsk(q.full)}
-                className="px-2.5 py-1 text-xs rounded-full border border-blue-200 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-700 hover:bg-blue-50 transition-colors shrink-0"
+                className="px-2.5 py-1 text-xs rounded-full border border-slate-200 bg-white text-gray-700 hover:border-slate-300 hover:bg-slate-50 transition-colors shrink-0 inline-flex items-center gap-1.5"
                 disabled={authLoading || !user}
                 title={q.full}
               >
-                {q.label}
+                <q.Icon className="w-3.5 h-3.5 text-slate-600"/>
+                <span>{q.label}</span>
               </button>
             ))}
           </div>
@@ -282,19 +336,20 @@ const Chat = () => {
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder={t('chat_type_message')}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+              placeholder="Type your message…"
+              className="flex-1 px-4 py-3 border border-slate-300 rounded-full focus:ring-2 focus:ring-slate-500 focus:border-slate-500 shadow-sm"
             />
             <button
               type="submit"
               disabled={authLoading || !user || !newMessage.trim()}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full w-12 h-12 flex items-center justify-center hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow"
+              className="bg-slate-900 text-white rounded-full w-12 h-12 flex items-center justify-center hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </button>
           </form>
+          <p className="text-[11px] text-gray-500">Tip: Use the quick ask chips to start faster. No personal data required.</p>
         </div>
       </div>
     </div>
