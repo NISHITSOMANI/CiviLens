@@ -86,41 +86,80 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Sentiment Trends (Sparkline of net score) */}
+        {/* Sentiment Trends (7d) - Grouped bars: Positive / Neutral / Negative */}
         <div className="rounded-xl border bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Sentiment (7d)</h3>
+            <div className="flex items-center gap-3 text-xs text-gray-600">
+              <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm bg-green-500"/> Positive</div>
+              <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm bg-gray-400"/> Neutral</div>
+              <div className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm bg-red-500"/> Negative</div>
+            </div>
           </div>
-          <div className="h-24">
-            {sentiment.length > 0 ? (
-              <svg viewBox="0 0 100 24" className="w-full h-full">
-                {(() => {
-                  const vals = sentiment.map(s => s.net)
-                  const min = Math.min(...vals, -1)
-                  const max = Math.max(...vals, 1)
-                  const range = Math.max(0.0001, max - min)
-                  const stepX = 100 / Math.max(1, sentiment.length - 1)
-                  const d = sentiment.map((s, i) => {
-                    const x = i * stepX
-                    const y = 24 - ((s.net - min) / range) * 24
-                    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
-                  }).join(' ')
-                  return (
-                    <>
-                      <path d={d} fill="none" stroke="#2563eb" strokeWidth="1.5" />
-                      {min < 0 && max > 0 && (
-                        <line x1="0" x2="100" y1={24 - ((0 - min) / range) * 24} y2={24 - ((0 - min) / range) * 24} stroke="#e5e7eb" strokeWidth="0.5" />
-                      )}
-                    </>
-                  )
-                })()}
-              </svg>
-            ) : (
-              <div className="text-gray-500 text-sm">No data</div>
-            )}
-          </div>
+          {sentiment.length > 0 ? (
+            <div className="h-64">
+              {(() => {
+                const data = sentiment
+                const W = 140, H = 100
+                const M = {top: 6, right: 4, bottom: 18, left: 18}
+                const iw = W - M.left - M.right
+                const ih = H - M.top - M.bottom
+                const vals = data.flatMap(d => [d.pos||0, d.neu||0, d.neg||0])
+                const maxY = Math.max(1, ...vals)
+                const minBar = 2
+                const n = data.length
+                const dayBand = iw / n
+                const gap = dayBand * 0.15
+                const inner = dayBand - gap
+                const barW = inner / 3
+                const xDay = (i) => M.left + i*dayBand + gap/2
+
+                return (
+                  <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full">
+                    {[0,0.25,0.5,0.75,1].map(t => (
+                      <line key={t} x1={M.left} x2={M.left+iw} y1={M.top + ih*(1-t)} y2={M.top + ih*(1-t)} stroke="#e5e7eb" strokeWidth="0.5" />
+                    ))}
+                    <line x1={M.left} x2={M.left+iw} y1={M.top+ih} y2={M.top+ih} stroke="#9ca3af" strokeWidth="0.6" />
+                    <line x1={M.left} x2={M.left} y1={M.top} y2={M.top+ih} stroke="#9ca3af" strokeWidth="0.6" />
+
+                    {data.map((d,i) => {
+                      const baseX = xDay(i)
+                      const bars = [
+                        {key:'pos', val: Math.max(0,d.pos||0), color:'#22c55e'},
+                        {key:'neu', val: Math.max(0,d.neu||0), color:'#9ca3af'},
+                        {key:'neg', val: Math.max(0,d.neg||0), color:'#ef4444'},
+                      ]
+                      return (
+                        <g key={i}>
+                          {bars.map((b,j) => {
+                            const h = Math.max(minBar, (b.val/maxY)*ih)
+                            const x = baseX + j*barW
+                            const yTop = M.top + ih - h
+                            return (
+                              <g key={b.key}>
+                                <rect x={x.toFixed(2)} y={yTop.toFixed(2)} width={Math.max(2, barW-1).toFixed(2)} height={h.toFixed(2)} fill={b.color} rx="1">
+                                  <title>{`${new Date(d.date).toLocaleDateString(undefined,{month:'short',day:'numeric'})} • ${b.key.toUpperCase()}\n${b.val}`}</title>
+                                </rect>
+                                <text x={(x + (barW-1)/2).toFixed(2)} y={(yTop-1).toFixed(2)} textAnchor="middle" fontSize="2.6" fill="#6b7280">{b.val}</text>
+                              </g>
+                            )
+                          })}
+                          <text x={(baseX + inner/2).toFixed(2)} y={(M.top+ih+10).toFixed(2)} fontSize="3" textAnchor="middle" fill="#6b7280">
+                            {new Date(d.date).toLocaleDateString(undefined,{month:'short', day:'numeric'})}
+                          </text>
+                        </g>
+                      )
+                    })}
+                  </svg>
+                )
+              })()}
+            </div>
+          ) : (
+            <div className="text-gray-500 text-sm">No data</div>
+          )}
           <div className="flex gap-4 text-xs text-gray-600 mt-2">
             <div>Days: {sentiment.length}</div>
+            <div>Total: {sentiment.reduce((a, s) => a + ((s.pos||0)+(s.neu||0)+(s.neg||0)), 0)}</div>
           </div>
         </div>
       </div>
