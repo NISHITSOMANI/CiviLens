@@ -3,8 +3,8 @@
 // - Token storage pattern: in-memory access token + localStorage refresh token
 // - Endpoints used: /api/sentiment/regions/, /api/complaints/heatmap/
 
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useQuery } from '@tanstack/react-query'
@@ -24,6 +24,8 @@ const Home = () => {
   )
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
+  const recognitionRef = useRef(null)
+  const navigate = useNavigate()
 
   // Fetch sentiment data using React Query
   const { data: sentimentData, isLoading: sentimentLoading, error: sentimentError } = useQuery({
@@ -39,33 +41,55 @@ const Home = () => {
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
-  // Voice recognition functionality
+  // Voice recognition functionality with start/stop and redirect
   const startVoiceRecognition = () => {
-    if ('webkitSpeechRecognition' in window) {
-      setIsListening(true)
-      const recognition = new window.webkitSpeechRecognition()
-      recognition.continuous = false
-      recognition.interimResults = true
-      recognition.lang = 'en-US'
-      
-      recognition.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map(result => result[0])
-          .map(result => result.transcript)
-          .join('')
-        setTranscript(transcript)
-      }
-      
-      recognition.onend = () => {
-        setIsListening(false)
-        // In a real app, you would send the transcript to your backend
-        // to search for relevant schemes
-      }
-      
-      recognition.start()
-    } else {
+    if (!('webkitSpeechRecognition' in window)) {
       alert('Speech recognition not supported in this browser. Please try Chrome.')
+      return
     }
+    // Initialize instance
+    const recognition = new window.webkitSpeechRecognition()
+    recognitionRef.current = recognition
+    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+
+    recognition.onresult = (event) => {
+      const text = Array.from(event.results)
+        .map(result => result[0])
+        .map(result => result.transcript)
+        .join('')
+      setTranscript(text)
+      const last = event.results[event.results.length - 1]
+      if (last && last.isFinal) {
+        // Auto-stop and redirect on final result
+        recognition.stop()
+      }
+    }
+
+    recognition.onerror = () => {
+      setIsListening(false)
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+      const q = (transcript || '').trim()
+      if (q) {
+        // Navigate to schemes search with q param
+        navigate(`/schemes?q=${encodeURIComponent(q)}`)
+      }
+    }
+
+    setIsListening(true)
+    setTranscript('')
+    recognition.start()
+  }
+
+  const stopVoiceRecognition = () => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop() } catch (_) {}
+    }
+    setIsListening(false)
   }
 
   // Loading and error states for heatmap
@@ -87,14 +111,13 @@ const Home = () => {
             <h3 className="text-xl font-bold mb-4">{t('home.hero.voiceFinder.title')}</h3>
             <div className="flex flex-col sm:flex-row gap-4 items-center">
               <button 
-                onClick={startVoiceRecognition}
-                disabled={isListening}
-                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full font-bold transition duration-300 ${isListening ? 'bg-red-500 hover:bg-red-600' : 'bg-white text-blue-600 hover:bg-blue-50'}`}
+                onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full font-bold transition duration-300 ${isListening ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-white text-blue-600 hover:bg-blue-50'}`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
-                {isListening ? t('home.hero.voiceFinder.listening') : t('home.hero.voiceFinder.speak')}
+                {isListening ? 'Stop' : t('home.hero.voiceFinder.speak')}
               </button>
               <div className="flex-1 min-w-0 bg-white/30 rounded-lg px-4 py-2">
                 <p className="truncate text-white">{transcript || t('home.hero.voiceFinder.placeholder')}</p>

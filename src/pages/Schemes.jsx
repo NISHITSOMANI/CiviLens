@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import * as schemesApi from '../services/api/schemes'
 
@@ -12,6 +12,16 @@ const Schemes = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const LIMIT = 8
   const [page, setPage] = useState(1)
+  const [searchParams] = useSearchParams()
+
+  // Sync `q` from URL to search field and reset pagination
+  React.useEffect(() => {
+    const q = (searchParams.get('q') || '').trim()
+    if (q) {
+      setSearchQuery(q)
+      setPage(1)
+    }
+  }, [searchParams])
 
   const { data: schemesData, isLoading, isError } = useQuery({
     queryKey: ['schemes', filter, searchQuery, page, LIMIT],

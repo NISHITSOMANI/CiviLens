@@ -29,7 +29,6 @@ import AdminRoute from './components/AdminRoute'
 import GovernmentRoute from './components/GovernmentRoute'
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminSchemes from './pages/admin/Schemes'
-import AdminAnalytics from './pages/admin/Analytics'
 import AdminComplaints from './pages/admin/Complaints'
 function App() {
   return (
@@ -81,7 +80,6 @@ function AppContent() {
           >
             <Route index element={<AdminDashboard />} />
             <Route path="schemes" element={<AdminSchemes />} />
-            <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="complaints" element={<AdminComplaints />} />
             {/* Fallback to dashboard */}
             <Route path="*" element={<Navigate to="/admin" replace />} />
