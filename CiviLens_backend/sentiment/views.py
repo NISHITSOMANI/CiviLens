@@ -19,38 +19,36 @@ class SentimentOverviewView(View):
             start_30 = now - timedelta(days=30)
             start_7 = now - timedelta(days=7)
 
-            # Fetch recent records (limit to avoid huge payloads)
+            # Fetch recent sentiment_records (limit to avoid huge payloads)
             # Accept created_at as ISO string or epoch ms; fallback to now
             rows = list(col.find({}, {'sentiment': 1, 'category': 1, 'text': 1, 'created_at': 1}).limit(5000))
 
-            # If no explicit sentiment records exist, fallback to complaints data
-            if not rows:
-                complaints_col = db['complaints']
-                complaints = list(complaints_col.find({}, {
-                    'status': 1,
-                    'category': 1,
-                    'topic': 1,
-                    'description': 1,
-                    'created_at': 1,
-                }).limit(10000))
+            # Also merge in recent complaints so that new complaints contribute to sentiment immediately
+            # (Previously we only used complaints if sentiment_records were empty.)
+            complaints_col = db['complaints']
+            complaints = list(complaints_col.find({}, {
+                'status': 1,
+                'category': 1,
+                'topic': 1,
+                'description': 1,
+                'created_at': 1,
+            }).limit(10000))
 
-                # No keyword lists; sentiment will be determined purely by the NLP model
+            synthetic = []
+            for c in complaints:
+                text = c.get('description') or ''
+                cat = c.get('category') or c.get('topic') or 'General'
+                status = c.get('status')
+                synthetic.append({
+                    'sentiment': None,  # let NLP decide
+                    'category': cat,
+                    'text': text,
+                    'created_at': c.get('created_at'),
+                    'status': status,
+                })
 
-                synthetic = []
-                for c in complaints:
-                    text = c.get('description') or ''
-                    cat = c.get('category') or c.get('topic') or 'General'
-                    status = c.get('status')
-                    # Sentiment left unspecified; NLP model will classify below
-                    synthetic.append({
-                        'sentiment': None,
-                        'category': cat,
-                        'text': text,
-                        'created_at': c.get('created_at'),
-                        'status': status,
-                    })
-
-                rows = synthetic
+            # Merge; rows from sentiment_records stay, complaints appended
+            rows.extend(synthetic)
 
             # Attempt DS/NLP-based sentiment on available texts (overrides heuristic if available)
             try:

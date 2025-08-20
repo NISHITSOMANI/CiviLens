@@ -1,13 +1,14 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import * as complaintsApi from '../services/api/complaints'
 import { toast } from 'react-hot-toast'
 
 const NewComplaint = () => {
   const { t } = useLanguage()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [complaint, setComplaint] = useState({
     title: '',
     description: '',
@@ -57,8 +58,18 @@ const NewComplaint = () => {
   // Submit complaint using React Query mutation
   const { mutate: submitComplaint, isLoading: isSubmitting } = useMutation({
     mutationFn: complaintsApi.createComplaint,
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success(t('complaint_submitted_successfully') || 'Complaint submitted successfully!')
+      // Refresh sentiment overview and complaints lists so today's data shows up immediately
+      try {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['sentiment', 'overview'] }),
+          queryClient.invalidateQueries({ queryKey: ['complaints'] }),
+          queryClient.invalidateQueries({ queryKey: ['complaints', 'list'] })
+        ])
+      } catch (e) {
+        // ignore cache errors
+      }
       navigate('/complaints')
     },
     onError: (error) => {
