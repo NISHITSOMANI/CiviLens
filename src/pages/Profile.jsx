@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
@@ -16,15 +16,16 @@ const Profile = () => {
     phone: '',
     address: ''
   })
-  
-  const { user } = useAuth()
+
+  const { user, getProfile } = useAuth()
   const { showToast } = useToast()
   const { t } = useLanguage()
   const queryClient = useQueryClient()
 
-  // Fetch profile data using React Query
+  // Fetch profile data using React Query (scoped per user)
   const { data: profileData, isLoading, isError, error } = useQuery({
-    queryKey: ['profile'],
+    queryKey: ['profile', user?.id || user?.username],
+    enabled: !!user,
     queryFn: async () => {
       const response = await authApi.getProfile()
       if (response.success) {
@@ -36,13 +37,28 @@ const Profile = () => {
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
+  // Keep form data in sync with fetched profile when not editing
+  useEffect(() => {
+    if (profileData && !isEditing) {
+      setFormData({
+        username: profileData.username || '',
+        email: profileData.email || '',
+        role: profileData.role || '',
+        first_name: profileData.first_name || '',
+        last_name: profileData.last_name || '',
+        phone: profileData.phone || '',
+        address: profileData.address || ''
+      })
+    }
+  }, [profileData, isEditing])
+
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: authApi.updateProfile,
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       if (response.success) {
-        // Update the profile cache
-        queryClient.setQueryData(['profile'], response.data)
+        // Update the profile cache for current user
+        queryClient.setQueryData(['profile', user?.id || user?.username], response.data)
         
         // Update form data
         setFormData({
@@ -55,6 +71,13 @@ const Profile = () => {
           address: response.data.address || ''
         })
         
+        // Ensure AuthContext/localStorage reflect latest profile
+        try {
+          await getProfile()
+        } catch (_) {
+          // no-op; Profile page still has fresh cache
+        }
+
         setIsEditing(false)
         showToast(t('profile_updated_successfully'), 'success')
       } else {
@@ -274,18 +297,6 @@ const Profile = () => {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${profileData.role === 'admin' ? 'bg-red-100 text-red-800' : profileData.role === 'official' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>
                       {profileData.role}
                     </span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">{t('member_since')}</p>
-                  <p className="font-medium">
-                    {profileData.date_joined ? new Date(profileData.date_joined).toLocaleDateString() : t('n_a')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">{t('last_login')}</p>
-                  <p className="font-medium">
-                    {profileData.last_login ? new Date(profileData.last_login).toLocaleDateString() : t('n_a')}
                   </p>
                 </div>
               </div>

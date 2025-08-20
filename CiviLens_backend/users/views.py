@@ -19,7 +19,7 @@ def verify_password(password, hashed):
     return hash_password(password) == hashed
 
 # Helper function to create a new user in MongoDB
-def create_user(username, email, password, role='user', region=None):
+def create_user(username, email, password, role='user', region=None, first_name='', last_name='', phone='', address=''):
     print(f"Creating user: username={username}, email={email}, role={role}, region={region}")
     users_collection = db['users']
     
@@ -41,6 +41,10 @@ def create_user(username, email, password, role='user', region=None):
         'password': hash_password(password),
         'role': role,
         'region': region if region else "",
+        'first_name': first_name or '',
+        'last_name': last_name or '',
+        'phone': phone or '',
+        'address': address or '',
         'is_active': True,
         'is_staff': role == 'admin'
     }
@@ -81,6 +85,11 @@ class RegisterView(View):
             email = data.get('email')
             password = data.get('password')
             role = data.get('role', 'user')
+            # Optional profile fields at signup
+            first_name = data.get('first_name', '')
+            last_name = data.get('last_name', '')
+            phone = data.get('phone', '')
+            address = data.get('address', '')
 
             print(f"Username: {username}, Email: {email}, Password: {password}, Role: {role}")
 
@@ -102,7 +111,11 @@ class RegisterView(View):
                 email=email,
                 password=password,
                 role=role,
-                region=region
+                region=region,
+                first_name=first_name,
+                last_name=last_name,
+                phone=phone,
+                address=address,
             )
             
             if user is None:
@@ -208,6 +221,7 @@ class LoginView(View):
                 status=500
             )
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ProfileView(View):
     def get(self, request):
         # Extract user info from JWT token (assuming it's set by middleware)
@@ -226,7 +240,64 @@ class ProfileView(View):
         if not user:
             return JsonResponse({'success': False, 'error': {'message':'User not found'}}, status=404)
             
-        return JsonResponse({'success': True, 'data': {'id': str(user['_id']), 'username': user['username'], 'email': user['email'], 'role': user['role']}})
+        # Return complete profile snapshot so UI persists data across refresh
+        data = {
+            'id': str(user['_id']),
+            'username': user.get('username'),
+            'email': user.get('email'),
+            'role': user.get('role'),
+            'first_name': user.get('first_name', ''),
+            'last_name': user.get('last_name', ''),
+            'phone': user.get('phone', ''),
+            'address': user.get('address', ''),
+        }
+        return JsonResponse({'success': True, 'data': data})
+
+    def put(self, request):
+        # Require authentication via JWT middleware
+        user_data = getattr(request, 'user_data', None)
+        if not user_data:
+            return JsonResponse({'success': False, 'error': {'message': 'Authentication required'}}, status=401)
+
+        try:
+            payload = json.loads(request.body or b"{}")
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': {'message': 'Invalid JSON'}}, status=400)
+
+        # Allow only a safe subset of fields to be updated by the user
+        allowed_fields = ['username', 'first_name', 'last_name', 'phone', 'address']
+        update_fields = {k: v for k, v in payload.items() if k in allowed_fields}
+
+        if not update_fields:
+            return JsonResponse({'success': False, 'error': {'message': 'No updatable fields provided'}}, status=400)
+
+        from bson import ObjectId
+        users_collection = db['users']
+        try:
+            result = users_collection.update_one({'_id': ObjectId(user_data['_id'])}, {'$set': update_fields})
+        except pymongo_errors.PyMongoError:
+            return JsonResponse({'success': False, 'error': {'message': 'Database unavailable. Please try again later.'}}, status=503)
+
+        if result.matched_count == 0:
+            return JsonResponse({'success': False, 'error': {'message': 'User not found'}}, status=404)
+
+        # Return updated profile snapshot
+        try:
+            user = users_collection.find_one({'_id': ObjectId(user_data['_id'])})
+        except pymongo_errors.PyMongoError:
+            return JsonResponse({'success': False, 'error': {'message': 'Database unavailable. Please try again later.'}}, status=503)
+
+        data = {
+            'id': str(user['_id']),
+            'username': user.get('username'),
+            'email': user.get('email'),
+            'role': user.get('role'),
+            'first_name': user.get('first_name', ''),
+            'last_name': user.get('last_name', ''),
+            'phone': user.get('phone', ''),
+            'address': user.get('address', ''),
+        }
+        return JsonResponse({'success': True, 'data': data})
 
 
 @method_decorator(csrf_exempt, name='dispatch')

@@ -7,15 +7,17 @@ import * as complaintsApi from '../services/api/complaints'
 
 const Complaints = () => {
   const { t } = useLanguage()
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const navigate = useNavigate()
   const [filter, setFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
 
   const { data: complaintsData, isLoading, isError } = useQuery({
-    queryKey: ['complaints'],
+    queryKey: ['complaints', user?.id || user?._id || null],
     queryFn: complaintsApi.listComplaints,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: !loading, // wait for auth bootstrap/refresh so Authorization header is present
+    retry: 1,
   })
 
   const complaints = complaintsData || []
@@ -48,9 +50,9 @@ const Complaints = () => {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'pending': return t('complaints_status_pending')
-      case 'in_progress': return t('complaints_status_in_progress')
-      case 'resolved': return t('complaints_status_resolved')
+      case 'pending': return 'Pending'
+      case 'in_progress': return 'In Progress'
+      case 'resolved': return 'Resolved'
       default: return status
     }
   }
@@ -83,15 +85,15 @@ const Complaints = () => {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-800">{t('complaints_title')}</h2>
-          <p className="text-gray-600 mt-2">{t('complaints_subtitle')}</p>
+          <h2 className="text-3xl font-bold text-gray-800">Complaints</h2>
+          <p className="text-gray-600 mt-2">View and manage your complaints</p>
         </div>
         <a
           href="/complaints/new"
           onClick={handleNewComplaintClick}
-          className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 hover:from-blue-600 hover:to-indigo-700 text-center"
+          className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 hover:bg-blue-700 text-center"
         >
-          {t('complaints_file_new')}
+          File New Complaint
         </a>
       </div>
 
@@ -99,14 +101,14 @@ const Complaints = () => {
         {/* Filters Sidebar */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl shadow-md p-6 sticky top-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">{t('complaints_filter_category')}</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Filter by Category</h3>
             
             <div className="space-y-2">
               <button
                 onClick={() => setFilter('all')}
                 className={`block w-full text-left px-4 py-2 rounded-lg ${filter === 'all' ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
               >
-                {t('complaints_category_all')}
+                All
               </button>
               
               {categories.map((category, index) => (
@@ -127,14 +129,14 @@ const Complaints = () => {
           <div className="bg-white rounded-xl shadow-md p-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <h3 className="text-xl font-bold text-gray-800">
-                {filter === 'all' ? t('complaints_all') : `${filter} ${t('complaints')}`}
+                {filter === 'all' ? 'All Complaints' : `${filter} Complaints`}
                 <span className="text-gray-500 font-normal ml-2">({filteredComplaints.length})</span>
               </h3>
               
               <div className="relative">
                 <input
                   type="text"
-                  placeholder={t('complaints_search_placeholder')}
+                  placeholder="Search complaints..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -161,19 +163,19 @@ const Complaints = () => {
                         
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
                           <div>
-                            <span className="text-gray-500 block">{t('complaints_category')}</span>
+                            <span className="text-gray-500 block">Category</span>
                             <span className="font-medium text-gray-800">{complaint.category}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500 block">{t('complaints_location')}</span>
+                            <span className="text-gray-500 block">Location</span>
                             <span className="font-medium text-gray-800">{complaint.location}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500 block">{t('complaints_date')}</span>
+                            <span className="text-gray-500 block">Date</span>
                             <span className="font-medium text-gray-800">{complaint.date}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500 block">{t('complaints_upvotes')}</span>
+                            <span className="text-gray-500 block">Upvotes</span>
                             <span className="font-medium text-gray-800">{complaint.upvotes}</span>
                           </div>
                         </div>
@@ -182,9 +184,9 @@ const Complaints = () => {
                       <div className="flex flex-col gap-2 md:items-end">
                         <Link
                           to={`/complaints/${complaint.id}`}
-                          className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium py-2 px-4 rounded-lg transition duration-300 hover:from-blue-600 hover:to-indigo-700 text-center"
+                          className="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition duration-300 hover:bg-blue-700 text-center"
                         >
-                          {t('view_details')}
+                          View Details
                         </Link>
                       </div>
                     </div>
@@ -195,8 +197,8 @@ const Complaints = () => {
                   <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <h4 className="text-lg font-medium text-gray-800 mb-2">{t('complaints_not_found')}</h4>
-                  <p className="text-gray-600">{t('complaints_not_found_message')}</p>
+                  <h4 className="text-lg font-medium text-gray-800 mb-2">No Complaints Found</h4>
+                  <p className="text-gray-600">Try adjusting filters or file a new complaint.</p>
                 </div>
               )}
             </div>

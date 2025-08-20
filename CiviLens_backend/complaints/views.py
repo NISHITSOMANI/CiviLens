@@ -20,9 +20,12 @@ class ComplaintListCreateView(View):
         # Get collection
         complaints_collection = db['complaints']
         
-        # Build query (if no user, return empty list but keep response shape)
+        # Build query
+        # By default, return all complaints. If the client explicitly asks for only
+        # the current user's complaints using ?mine=1 (or true/yes), then filter.
         query = {}
-        if user_data:
+        mine = (request.GET.get('mine') or '').strip().lower()
+        if mine in ('1', 'true', 'yes') and user_data:
             query['user_id'] = str(user_data['_id'])
         
         # Fetch complaints

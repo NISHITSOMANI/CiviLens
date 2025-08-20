@@ -49,6 +49,10 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [role, setRole] = useState('citizen')
   const [region, setRegion] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [address, setAddress] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   
   const { register } = useAuth()
@@ -83,8 +87,18 @@ const Signup = () => {
     setIsLoading(true)
 
     try {
-      // Include region in registration data
-      const result = await register({ username, email, password, role, region })
+      // Include region and optional profile fields in registration data
+      const result = await register({ 
+        username, 
+        email, 
+        password, 
+        role, 
+        region,
+        first_name: firstName,
+        last_name: lastName,
+        phone,
+        address
+      })
       
       if (result.success) {
         showToast('Account created successfully! Please login to continue.', 'success')
@@ -119,6 +133,31 @@ const Signup = () => {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder={t('signup_username_placeholder')}
           />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First name</label>
+            <input
+              id="firstName"
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your first name"
+            />
+          </div>
+          <div>
+            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last name</label>
+            <input
+              id="lastName"
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your last name"
+            />
+          </div>
         </div>
 
         <div>

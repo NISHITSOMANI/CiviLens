@@ -119,6 +119,8 @@ export const AuthProvider = ({ children }) => {
         queryClient.removeQueries({ queryKey: ['chatMessages'] })
         // Clear any stale documents caches from previous sessions
         queryClient.removeQueries({ queryKey: ['documents'] })
+        // Clear any stale profile caches so new user fetches fresh profile
+        queryClient.removeQueries({ queryKey: ['profile'] })
       }
       return response
     } catch (error) {
@@ -145,6 +147,8 @@ export const AuthProvider = ({ children }) => {
       queryClient.removeQueries({ queryKey: ['chatMessages'] })
       // Remove documents caches as well
       queryClient.removeQueries({ queryKey: ['documents'] })
+      // Remove profile caches so next session fetches fresh data
+      queryClient.removeQueries({ queryKey: ['profile'] })
       // Optionally clear everything user-specific if needed
       // queryClient.clear()
     }

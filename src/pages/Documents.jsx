@@ -11,6 +11,27 @@ const Documents = () => {
   const [selectedFile, setSelectedFile] = useState(null)
   const queryClient = useQueryClient()
 
+  // Helpers
+  const formatBytes = (bytes) => {
+    if (bytes === 0 || bytes == null) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
+  }
+
+  const formatDate = (value) => {
+    if (!value) return '-'
+    try {
+      // value can be ISO string or epoch ms
+      const d = new Date(isNaN(value) ? value : Number(value))
+      if (isNaN(d.getTime())) return '-'
+      return d.toLocaleString()
+    } catch {
+      return '-'
+    }
+  }
+
   const { data: documentsData, isLoading, isError } = useQuery({
     queryKey: ['documents', user?.id],
     queryFn: documentsApi.listDocuments,
@@ -95,7 +116,7 @@ const Documents = () => {
     switch (type) {
       case 'pdf':
         return (
-          <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center ring-1 ring-red-100">
             <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -103,7 +124,7 @@ const Documents = () => {
         )
       case 'image':
         return (
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center ring-1 ring-green-100">
             <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -111,7 +132,7 @@ const Documents = () => {
         )
       default:
         return (
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center ring-1 ring-blue-100">
             <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -151,7 +172,7 @@ const Documents = () => {
         <p className="text-gray-600 mt-2">{t('documents_subtitle')}</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md p-6">
+      <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-6">
         <h3 className="text-xl font-bold text-gray-800 mb-4">{t('documents_upload_title')}</h3>
         <form onSubmit={handleUpload} className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
@@ -164,46 +185,53 @@ const Documents = () => {
           <button 
             type="submit" 
             disabled={!selectedFile || uploadMutation.isPending}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {uploadMutation.isPending ? t('documents_uploading') : t('documents_upload')}
           </button>
         </form>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">{t('documents_your_documents')}</h3>
+      <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-5">{t('documents_your_documents')}</h3>
         
         {documents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {documents.map((doc) => (
-              <div key={doc.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition duration-300">
+              <div key={doc.id} className="rounded-2xl p-4 hover:shadow-md transition duration-300 bg-white ring-1 ring-gray-100">
                 <div className="flex items-start gap-4">
                   {getFileIcon(doc.type)}
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-800 truncate">{doc.name}</h4>
-                    <div className="mt-2 space-y-1 text-sm text-gray-600">
-                      <div className="flex justify-between">
-                        <span>{t('documents_size')}:</span>
-                        <span>{doc.size}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <h4 className="font-semibold text-gray-800 truncate" title={doc.name}>{doc.name}</h4>
+                      {doc.category && (
+                        <span className="shrink-0 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-200">
+                          {doc.category}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-3 text-sm">
+                      <div className="text-gray-500">
+                        <div className="uppercase tracking-wide text-[10px] text-gray-400">{t('documents_size')}</div>
+                        <div className="font-medium text-gray-700">{formatBytes(doc.size)}</div>
                       </div>
-                      <div className="flex justify-between">
-                        <span>{t('documents_category')}:</span>
-                        <span className="bg-gray-100 px-2 py-1 rounded text-xs">{doc.category}</span>
+                      <div className="text-gray-500">
+                        <div className="uppercase tracking-wide text-[10px] text-gray-400">{t('documents_uploaded')}</div>
+                        <div className="font-medium text-gray-700 truncate">{formatDate(doc.uploadDate)}</div>
                       </div>
-                      <div className="flex justify-between">
-                        <span>{t('documents_uploaded')}:</span>
-                        <span>{doc.uploadDate}</span>
+                      <div className="text-gray-500">
+                        <div className="uppercase tracking-wide text-[10px] text-gray-400">Type</div>
+                        <div className="font-medium text-gray-700">{doc.type?.toUpperCase() || '-'}</div>
                       </div>
                     </div>
-                    <div className="mt-3 flex gap-2">
-                      <button onClick={() => handleView(doc)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                    <div className="mt-4 flex items-center gap-2">
+                      <button onClick={() => handleView(doc)} className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100">
                         {t('documents_view')}
                       </button>
-                      <button onClick={() => handleDownload(doc)} className="text-gray-600 hover:text-gray-800 text-sm font-medium">
+                      <button onClick={() => handleDownload(doc)} className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">
                         {t('documents_download')}
                       </button>
-                      <button onClick={() => handleDelete(doc)} className="text-red-600 hover:text-red-800 text-sm font-medium">
+                      <button onClick={() => handleDelete(doc)} className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100">
                         {t('documents_delete')}
                       </button>
                     </div>

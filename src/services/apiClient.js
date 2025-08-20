@@ -49,8 +49,11 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
     
-    // If error is 401 and we haven't tried to refresh token yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // If error is 401 (unauthorized) OR 403 (forbidden due to missing/expired token)
+    // and we haven't tried to refresh token yet, attempt refresh.
+    const status = error.response?.status
+    const hadAuthHeader = !!originalRequest?.headers?.Authorization
+    if ((status === 401 || (status === 403 && !hadAuthHeader)) && !originalRequest._retry) {
       originalRequest._retry = true
       
       try {
