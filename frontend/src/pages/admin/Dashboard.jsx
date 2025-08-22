@@ -54,7 +54,7 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Users" value={stats?.users?.total ?? 0} />
-        <StatCard title="Active Users" value={stats?.users?.active ?? 0} />
+        <StatCard title="Government Officials" value={stats?.users?.officials ?? 0} />
         <StatCard title="Admins" value={stats?.users?.admins ?? 0} />
         <StatCard title="Schemes" value={stats?.schemes?.total ?? 0} />
       </div>

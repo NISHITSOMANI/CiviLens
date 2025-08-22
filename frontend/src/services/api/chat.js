@@ -19,6 +19,16 @@ export const getMessages = async () => {
 }
 
 /**
+ * Get distinct scheme categories for Quick Ask chips
+ * GET /api/chat/categories/
+ */
+export const getCategories = async () => {
+  const res = await apiClient.get('/chat/categories/')
+  if (res?.data?.success) return res.data.data || []
+  return []
+}
+
+/**
  * Send a message to the chatbot
  * POST /api/chat/
  */

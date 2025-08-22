@@ -577,6 +577,8 @@ class AdminStatsView(View):
         total_users = users.count_documents({})
         active_users = users.count_documents({'is_active': True})
         admin_users = users.count_documents({'$or': [{'is_staff': True}, {'role': 'admin'}]})
+        # government officials are tracked by role == 'official'
+        official_users = users.count_documents({'role': 'official'})
         total_schemes = schemes.count_documents({})
         total_complaints = complaints.count_documents({}) if 'complaints' in db.list_collection_names() else 0
 
@@ -585,6 +587,7 @@ class AdminStatsView(View):
                 'total': total_users,
                 'active': active_users,
                 'admins': admin_users,
+                'officials': official_users,
             },
             'schemes': {
                 'total': total_schemes,

@@ -1,7 +1,8 @@
 import json
 import time
 import os
-import requests
+import re
+import google.generativeai as genai
 from django.views import View
 from django.http import JsonResponse
 from django.conf import settings
@@ -38,48 +39,202 @@ class ChatView(View):
                 }
                 chat_messages_collection.insert_one(user_doc)
 
-            # Build minimal system prompt for domain safety
+            # System prompt: require direct, high-quality answers only
             system_prompt = (
-                "You are CiviLens Assistant specializing in Indian government schemes. "
-                "Answer concisely and factually. If the question is outside this domain or "
-                "you do not have enough information, say you don't know."
+                "You are CiviLens AI Assistant. Answer directly and helpfully about Indian government schemes and civic services. "
+                "Follow these rules strictly:\n"
+                "- Do NOT use disclaimers or hedging (no 'I cannot provide' or 'as an AI').\n"
+                "- Prefer concise lists of 5–8 items when listing schemes.\n"
+                "- For each scheme include: bold name, 1-line summary, key eligibility, main benefit, and an official link if confidently known.\n"
+                "- Keep sentences short; professional, neutral tone; no emojis unless the user asks.\n"
+                "- If a specific item is unknown, omit it rather than guessing; never fabricate links.\n"
+                "- Keep total length about 180–220 words unless the user asks for more.\n"
             )
 
-            # Use only the HF Router (OpenAI-compatible). This avoids classic API 404s.
-            use_router = True
+            # LLM response via Google Gemini; fall back to Mongo if unavailable/errors
             debug_info = None
             resp_text = ''
 
-            if use_router:
-                # Use OpenAI-compatible client against HF Router
-                # Requires: pip install openai>=1.0.0
-                hf_token = os.environ.get('HF_TOKEN') or os.environ.get('HUGGINGFACE_API_KEY')
-                if not hf_token:
-                    raise Exception('HF_TOKEN/HUGGINGFACE_API_KEY not configured on server')
+            # Local Mongo fallback: richer search over multiple fields with tokenization and category hints
+            def mongo_fallback(user_query: str) -> str:
                 try:
-                    from openai import OpenAI
-                    client = OpenAI(base_url="https://router.huggingface.co/v1", api_key=hf_token)
-                    # Default to a widely accessible public model; override via HF_CHAT_MODEL
-                    model_name = os.environ.get('HF_CHAT_MODEL', 'HuggingFaceH4/zephyr-7b-beta')
-                    # Build messages with a system prompt + user
-                    messages = [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": msg},
+                    query_text = (user_query or '').strip()
+                    if not query_text:
+                        return "I'm not sure."
+                    names = db.list_collection_names()
+                    if 'schemes' in names:
+                        col = db['schemes']
+                    elif 'gov_schemes' in names:
+                        col = db['gov_schemes']
+                    else:
+                        return "I'm not sure."
+
+                    # Detect common categories from quick chips
+                    lower_q = query_text.lower()
+                    category_hints = {
+                        'education': ['education', 'student', 'students', 'scholarship', 'school', 'college', 'tuition', 'scholarships'],
+                        'health': ['health', 'healthcare', 'medical', 'hospital', 'insurance'],
+                        'agriculture': ['agriculture', 'farmer', 'farmers', 'crop', 'kisan'],
+                        'pension': ['pension', 'old age', 'retirement'],
+                        'women': ['women', 'girls', 'female', 'ladki', 'mahila'],
+                        'housing': ['housing', 'house', 'home', 'pmay', 'awas'],
+                        'startup': ['startup', 'entrepreneur', 'business', 'msme'],
+                    }
+                    cat_filter_pattern = None
+                    for _, keywords in category_hints.items():
+                        if any(k in lower_q for k in keywords):
+                            # Use a broad regex that matches any of the keywords for that category
+                            escaped = [re.escape(k) for k in keywords]
+                            cat_filter_pattern = "(" + "|".join(escaped) + ")"
+                            break
+
+                    # Tokenize into words (min length 3)
+                    tokens = [t for t in re.findall(r"[A-Za-z0-9]+", lower_q) if len(t) >= 3]
+                    # Fields to search across
+                    text_fields = [
+                        'name', 'scheme_name', 'title',
+                        'description', 'description_long', 'summary', 'details', 'highlights',
+                        'benefits', 'benefit', 'eligibility', 'objective', 'objectives', 'how_to_apply',
+                        'category', 'categoryName', 'department', 'department_name', 'ministry', 'ministry_name',
+                        'state', 'state_name', 'tags',
+                        'url', 'link', 'scheme_url'
                     ]
-                    completion = client.chat.completions.create(
-                        model=model_name,
-                        messages=messages,
-                        temperature=0.3,
-                        max_tokens=400,
-                    )
-                    resp_text = (completion.choices[0].message.content or '').strip()
+
+                    # Build query: AND over tokens, where each token matches OR over fields (regex i)
+                    and_clauses = []
+                    for tok in tokens or [lower_q]:
+                        or_clauses = []
+                        for f in text_fields:
+                            if f == 'tags':
+                                or_clauses.append({'tags': {'$elemMatch': {'$regex': tok, '$options': 'i'}}})
+                                or_clauses.append({'tags': {'$regex': tok, '$options': 'i'}})
+                            else:
+                                or_clauses.append({f: {'$regex': tok, '$options': 'i'}})
+                        and_clauses.append({'$or': or_clauses})
+
+                    mongo_query = {'$and': and_clauses} if and_clauses else {}
+                    if cat_filter_pattern:
+                        mongo_query = {
+                            '$and': [
+                                mongo_query if mongo_query else {},
+                                {'$or': [
+                                    {'category': {'$regex': cat_filter_pattern, '$options': 'i'}},
+                                    {'categoryName': {'$regex': cat_filter_pattern, '$options': 'i'}},
+                                ]}
+                            ]
+                        }
+
+                    projection = {
+                        '_id': 0,
+                        'name': 1, 'scheme_name': 1, 'title': 1,
+                        'url': 1, 'link': 1, 'scheme_url': 1,
+                        'category': 1, 'categoryName': 1,
+                        'benefits': 1, 'eligibility': 1,
+                    }
+                    docs = list(col.find(mongo_query, projection=projection).limit(10))
+
+                    # If strict AND search yields nothing, relax to OR-over-tokens search
+                    if not docs and tokens:
+                        or_clauses_outer = []
+                        for tok in tokens:
+                            inner_or = []
+                            for f in text_fields:
+                                if f == 'tags':
+                                    inner_or.append({'tags': {'$elemMatch': {'$regex': tok, '$options': 'i'}}})
+                                    inner_or.append({'tags': {'$regex': tok, '$options': 'i'}})
+                                else:
+                                    inner_or.append({f: {'$regex': tok, '$options': 'i'}})
+                            or_clauses_outer.append({'$or': inner_or})
+                        relaxed_query = {'$or': or_clauses_outer}
+                        if cat_filter_pattern:
+                            relaxed_query = {
+                                '$and': [
+                                    relaxed_query,
+                                    {'$or': [
+                                        {'category': {'$regex': cat_filter_pattern, '$options': 'i'}},
+                                        {'categoryName': {'$regex': cat_filter_pattern, '$options': 'i'}},
+                                    ]}
+                                ]
+                            }
+                        docs = list(col.find(relaxed_query, projection=projection).limit(10))
+
+                    # If nothing found, try a simpler category-only search
+                    if not docs and cat_filter_pattern:
+                        simple_q = {'$or': [
+                            {'category': {'$regex': cat_filter_pattern, '$options': 'i'}},
+                            {'categoryName': {'$regex': cat_filter_pattern, '$options': 'i'}},
+                        ]}
+                        docs = list(col.find(simple_q, projection=projection).limit(10))
+
+                    if not docs:
+                        # Try popular/recency fallback
+                        try:
+                            sort_key = 'created_at' if col.find_one({'created_at': {'$exists': True}}) else None
+                            base_filter = {}
+                            if cat_filter_pattern:
+                                base_filter = {'$or': [
+                                    {'category': {'$regex': cat_filter_pattern, '$options': 'i'}},
+                                    {'categoryName': {'$regex': cat_filter_pattern, '$options': 'i'}},
+                                ]}
+                            cursor = col.find(base_filter, projection=projection)
+                            if sort_key:
+                                cursor = cursor.sort(sort_key, -1)
+                            docs = list(cursor.limit(10))
+                        except Exception:
+                            docs = []
+                        if not docs:
+                            return "I couldn't find any schemes for that query. Try a different keyword or pick a Quick Ask category."
+
+                    lines = ["Here are some relevant schemes:"]
+                    for i, d in enumerate(docs, 1):
+                        name = d.get('name') or d.get('scheme_name') or d.get('title') or 'Unknown'
+                        url = d.get('url') or d.get('link') or d.get('scheme_url') or ''
+                        cat = d.get('category') or d.get('categoryName')
+                        extra = []
+                        elig = d.get('eligibility')
+                        bens = d.get('benefits')
+                        if elig and isinstance(elig, str):
+                            extra.append(f"Eligibility: {elig[:120]}{'…' if len(elig) > 120 else ''}")
+                        if bens and isinstance(bens, str):
+                            extra.append(f"Benefits: {bens[:120]}{'…' if len(bens) > 120 else ''}")
+                        base = f"{i}. {name}"
+                        if url:
+                            base += f" - {url}"
+                        if cat:
+                            base += f" (category: {cat})"
+                        lines.append(base)
+                        if extra:
+                            lines.append("   - " + " | ".join(extra))
+                    return "\n".join(lines)
+                except Exception:
+                    return "I'm not sure."
+
+            # Try Gemini first; on auth/quota/network/model errors -> fallback to Mongo
+            gemini_key = os.environ.get('GEMINI_API_KEY')
+            if not gemini_key:
+                resp_text = mongo_fallback(msg)
+            else:
+                try:
+                    genai.configure(api_key=gemini_key)
+                    model_name = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
+                    model = genai.GenerativeModel(model_name=model_name, system_instruction=system_prompt)
+                    result = model.generate_content(msg)
+                    text = getattr(result, 'text', None)
+                    # Some SDK versions return a response object with candidates/parts; handle defensively
+                    if not text and hasattr(result, 'candidates'):
+                        try:
+                            parts = result.candidates[0].content.parts
+                            text = "".join(getattr(p, 'text', '') for p in parts)
+                        except Exception:
+                            text = None
+                    resp_text = (text or '').strip() or "I'm not sure."
                 except Exception as e:
                     if getattr(settings, 'DEBUG', False):
-                        debug_info = f'router_error: {str(e)}'
-                    # Do not fall back to classic path; keep a single code path
-                    resp_text = "I'm not sure."
+                        debug_info = f'gemini_error: {str(e)}'
+                    # Fallback to Mongo results
+                    resp_text = mongo_fallback(msg)
 
-            # Classic path removed to ensure a single stable integration
+            # Classic path removed; single integration now uses Gemini with Mongo fallback
 
             # Persist assistant message (only if enabled)
             if persist_enabled:
@@ -123,5 +278,42 @@ class ChatMessagesView(View):
                     'timestamp': m.get('created_at'),
                 })
             return JsonResponse({'success': True, 'data': messages})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': {'message': str(e)}}, status=400)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CategoriesView(View):
+    def get(self, request):
+        try:
+            names = db.list_collection_names()
+            if 'schemes' in names:
+                col = db['schemes']
+            elif 'gov_schemes' in names:
+                col = db['gov_schemes']
+            else:
+                return JsonResponse({'success': True, 'data': []})
+
+            # Collect distinct values for category keys
+            cats_a = col.distinct('category')
+            cats_b = col.distinct('categoryName')
+            raw = [*(cats_a or []), *(cats_b or [])]
+            # Normalize, dedupe (case-insensitive), and sort
+            seen = set()
+            cleaned = []
+            for c in raw:
+                if not c or not isinstance(c, str):
+                    continue
+                s = c.strip()
+                if not s:
+                    continue
+                key = s.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                cleaned.append(s)
+            cleaned.sort(key=lambda x: x.lower())
+
+            return JsonResponse({'success': True, 'data': cleaned})
         except Exception as e:
             return JsonResponse({'success': False, 'error': {'message': str(e)}}, status=400)

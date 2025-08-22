@@ -13,3 +13,4 @@ sentence-transformers>=2.2.0
 joblib
 pandas
 xgboost
+google-generativeai>=0.7.2

@@ -8,6 +8,94 @@ from django.utils.decorators import method_decorator
 from db_connection import db
 from django.conf import settings
 from collections import defaultdict
+import re
+import traceback
+
+# Lightweight SMTP email sender using environment variables
+def _email_debug_enabled():
+    return (os.environ.get('EMAIL_DEBUG', 'false').lower() in ('1','true','yes','on'))
+
+def _send_assignment_email_safe(to_email: str, complaint_doc: dict):
+    try:
+        host = os.environ.get('EMAIL_HOST')
+        port = int(os.environ.get('EMAIL_PORT') or 587)
+        user = os.environ.get('EMAIL_HOST_USER')
+        password = os.environ.get('EMAIL_HOST_PASSWORD')
+        use_tls = (os.environ.get('EMAIL_USE_TLS', 'true').lower() in ('1','true','yes'))
+        from email.mime.text import MIMEText
+        import smtplib
+
+        if _email_debug_enabled():
+            print('[SMTP] preparing to send assignment email', flush=True)
+            print(f"[SMTP] host={host} port={port} use_tls={use_tls}", flush=True)
+            print(f"[SMTP] user={user}", flush=True)
+            # Do NOT print password
+
+        if not host or not user or not password:
+            if _email_debug_enabled():
+                print('[SMTP] missing configuration (host/user/password) — skipping send', flush=True)
+            return  # missing config; skip silently
+
+        title = complaint_doc.get('title') or complaint_doc.get('topic') or 'Complaint'
+        cid = str(complaint_doc.get('_id') or complaint_doc.get('id') or '')
+        region = complaint_doc.get('region') or complaint_doc.get('location') or complaint_doc.get('state') or '—'
+        status = (complaint_doc.get('status') or 'open').title()
+        summary = (complaint_doc.get('description') or '')[:400]
+        frontend_base = os.environ.get('FRONTEND_BASE_URL') or ''
+        link = f"{frontend_base.rstrip('/')}/admin/complaints" if frontend_base else ''
+
+        body = (
+            f"You have been assigned a complaint on CiviLens.\n\n"
+            f"Title: {title}\n"
+            f"ID: {cid}\n"
+            f"Region: {region}\n"
+            f"Status: {status}\n"
+            f"Summary: {summary}\n"
+            + (f"\nView: {link}\n" if link else "\n")
+            + "\nPlease log in to review and take action."
+        )
+        msg = MIMEText(body, 'plain', 'utf-8')
+        msg['Subject'] = f"CiviLens • New Complaint Assigned: {title}"
+        from_addr = os.environ.get('EMAIL_FROM') or os.environ.get('SMTP_SENDER') or user
+        msg['From'] = from_addr
+        msg['To'] = to_email
+
+        if _email_debug_enabled():
+            print(f"[SMTP] from={from_addr} to={to_email}", flush=True)
+
+        if use_tls:
+            if _email_debug_enabled():
+                print('[SMTP] connecting (TLS)...', flush=True)
+            with smtplib.SMTP(host, port, timeout=15) as s:
+                if _email_debug_enabled():
+                    print('[SMTP] connection opened, issuing STARTTLS', flush=True)
+                s.starttls()
+                if _email_debug_enabled():
+                    print('[SMTP] logging in...', flush=True)
+                s.login(user, password)
+                if _email_debug_enabled():
+                    print('[SMTP] login OK, sending email...', flush=True)
+                s.sendmail(from_addr, [to_email], msg.as_string())
+                if _email_debug_enabled():
+                    print('[SMTP] send OK (TLS).', flush=True)
+        else:
+            if _email_debug_enabled():
+                print('[SMTP] connecting (plain)...', flush=True)
+            with smtplib.SMTP(host, port, timeout=15) as s:
+                if _email_debug_enabled():
+                    print('[SMTP] connection opened (plain), logging in...', flush=True)
+                s.login(user, password)
+                if _email_debug_enabled():
+                    print('[SMTP] login OK, sending email...', flush=True)
+                s.sendmail(from_addr, [to_email], msg.as_string())
+                if _email_debug_enabled():
+                    print('[SMTP] send OK (plain).', flush=True)
+    except Exception:
+        if _email_debug_enabled():
+            print('[SMTP] ERROR while sending email:', flush=True)
+            traceback.print_exc()
+        # Fail-safe: never block the request due to email issues
+        pass
 from regions.views import _normalize_region, STATES
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -278,6 +366,12 @@ class ComplaintDetailView(View):
             if res.matched_count == 0:
                 return JsonResponse({'success': False, 'error': {'message': 'Not found'}}, status=404)
             doc = complaints.find_one(id_query)
+
+            # If assignee updated and looks like an email, attempt to send notification
+            if 'assignee' in updates:
+                assignee_val = str(updates.get('assignee') or '')
+                if assignee_val and re.search(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", assignee_val):
+                    _send_assignment_email_safe(assignee_val, doc or {})
             data = {
                 'id': str(doc.get('_id')),
                 'status': doc.get('status', 'open'),

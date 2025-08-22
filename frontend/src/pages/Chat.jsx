@@ -47,12 +47,11 @@ const Chat = () => {
   const queryClient = useQueryClient()
   const userKey = user?._id || user?.id || user?.username || 'anon'
   const quickQuestions = [
-    { Icon: Emoji.Lightbulb, label: 'Education', full: 'What education schemes are available for students?' },
-    { Icon: Emoji.Heartbeat, label: 'Healthcare', full: 'Tell me about government healthcare insurance schemes.' },
-    { Icon: Emoji.Leaf, label: 'Agriculture', full: 'What agriculture subsidy schemes are available for farmers?' },
-    { Icon: Emoji.Rocket, label: 'Startup', full: 'What startup or entrepreneurship schemes can I apply for?' },
-    { Icon: Emoji.Shield, label: 'Pension', full: 'What pension schemes exist for senior citizens?' },
-    { Icon: Emoji.Spark, label: 'Women', full: 'What women empowerment schemes are available?' },
+    { Icon: Emoji.Lightbulb, label: 'Education', full: 'List important Education schemes with a short description and official links if available.' },
+    { Icon: Emoji.Heartbeat, label: 'Health', full: 'List important Health schemes with a short description and official links if available.' },
+    { Icon: Emoji.Leaf, label: 'Agriculture', full: 'List important Agriculture schemes with a short description and official links if available.' },
+    { Icon: Emoji.Spark, label: 'Housing', full: 'List important Housing schemes with a short description and official links if available.' },
+    { Icon: Emoji.Shield, label: 'Pension', full: 'List important Pension schemes with a short description and official links if available.' },
   ]
 
   const handleQuickAsk = (text) => {
