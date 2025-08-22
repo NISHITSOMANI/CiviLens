@@ -7,6 +7,8 @@ load_dotenv()
 
 # Get MongoDB URI from environment variables
 MONGO_URI = os.getenv("MONGO_URI")
+if not MONGO_URI:
+    raise RuntimeError("MONGO_URI is not set. Create CiviLens_backend/.env with your MongoDB Atlas connection string. See ENVIRONMENT.md for details.")
 
 # Allow overrides from env; keep sensible defaults suitable for Atlas
 SERVER_SELECTION_TIMEOUT_MS = int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "15000"))  # 15s
