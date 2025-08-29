@@ -1,21 +1,26 @@
-// Assumptions:
-// - Base URL: import.meta.env.VITE_API_BASE_URL (default http://localhost:8000)
-// - Token storage pattern: in-memory access token + localStorage refresh token
-// - Endpoints used: /api/auth/refresh/
+import axios from 'axios';
 
-import axios from 'axios'
+// Get base URL from environment variable or use default
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // In-memory access token (more secure than localStorage)
-let accessToken = null
+let accessToken = null;
 
-// Create axios instance
+// Create axios instance with configuration
 const apiClient = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api`,
+  baseURL: `${API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL}/api`,
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
-})
+  withCredentials: true, // Important for cookies if using session-based auth
+});
+
+// Log the API base URL for debugging (removed in production)
+if (import.meta.env.DEV) {
+  console.log(`API Base URL: ${apiClient.defaults.baseURL}`);
+}
 
 // Helper to set access token (for in-memory storage)
 export const setAccessToken = (token) => {
