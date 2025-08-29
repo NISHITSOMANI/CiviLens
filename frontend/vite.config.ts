@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             // Split vendor and app code
             react: ['react', 'react-dom', 'react-router-dom'],
-            vendor: ['axios', 'react-query'],
+            vendor: ['axios', '@tanstack/react-query'],
           },
         },
       },
